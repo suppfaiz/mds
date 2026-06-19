@@ -56,6 +56,16 @@ $error = '';
 $attempts_left = MAX_LOGIN_ATTEMPTS - (int)($_SESSION[$attempts_key] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Intercept AJAX log request for access declaration
+    if (isset($_POST['action']) && $_POST['action'] === 'log_declaration') {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $location = $_POST['location'] ?? 'Tidak Diketahui';
+        logActivity($pdo, 'Pernyataan Hak Akses', 'Pengguna menyetujui pernyataan hak akses. IP: ' . $ip . ' (Lokasi: ' . $location . ')');
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'logged']);
+        exit();
+    }
+
     // Honeypot anti-bot check
     $honeypot = $_POST['honeypot'] ?? '';
     // Captcha checkbox verification
@@ -292,6 +302,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </ul>
                     <p class="mb-0 text-success fw-bold text-center">--- Batas Akhir Dokumen ---</p>
                 </div>
+
+                <!-- IP and Location Display -->
+                <div class="mt-3 p-3 bg-light border rounded text-secondary-emphasis" style="font-size: 13px;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><strong>Alamat IP Anda:</strong></span>
+                        <span id="displayIP" class="font-monospace"><?php echo htmlspecialchars($_SERVER['REMOTE_ADDR']); ?></span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><strong>Lokasi Terdeteksi:</strong></span>
+                        <span id="displayLocation" class="text-primary fw-semibold"><i class="spinner-border spinner-border-sm text-primary me-1" style="width: 12px; height: 12px;"></i> Mendeteksi...</span>
+                    </div>
+                </div>
                 
                 <div class="form-check mt-3">
                     <input class="form-check-input" type="checkbox" id="agreeCheckbox" disabled>
@@ -357,7 +379,7 @@ if (captchaBox && captchaCheckbox) {
     }
 }
 
-// Access declaration modal scroll and checkbox validation logic
+// Access declaration modal scroll, geolocate, and AJAX audit log logic
 document.addEventListener('DOMContentLoaded', () => {
     const accessModalEl = document.getElementById('accessModal');
     if (accessModalEl) {
@@ -367,11 +389,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const termsContent = document.getElementById('termsContent');
         const agreeCheckbox = document.getElementById('agreeCheckbox');
         const btnContinue = document.getElementById('btnContinue');
+        const displayIP = document.getElementById('displayIP');
+        const displayLocation = document.getElementById('displayLocation');
         
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const roleSelect = document.getElementById('role');
         const togglePassBtn = document.getElementById('togglePass');
+        
+        let locationText = 'Jaringan Lokal / Private IP';
+        
+        // Geolocation Lookup via Free IP API
+        const isPrivateIP = (ip) => {
+            return ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
+        };
+        
+        const userIp = displayIP ? displayIP.textContent.trim() : '';
+        
+        if (isPrivateIP(userIp)) {
+            displayLocation.innerHTML = '<i class="bi bi-geo-alt-fill text-warning me-1"></i> Jaringan Lokal / Private IP';
+        } else {
+            fetch('https://freeipapi.com/api/json')
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    return res.json();
+                })
+                .then(data => {
+                    if (data && data.cityName) {
+                        locationText = `${data.cityName}, ${data.regionName ? data.regionName + ', ' : ''}${data.countryName}`;
+                        displayLocation.innerHTML = `<i class="bi bi-geo-alt-fill text-success me-1"></i> ${locationText}`;
+                        if (data.ipAddress && displayIP) {
+                            displayIP.textContent = data.ipAddress;
+                        }
+                    } else {
+                        displayLocation.innerHTML = '<i class="bi bi-geo-alt-fill text-muted me-1"></i> Lokasi Tidak Terdeteksi';
+                    }
+                })
+                .catch(() => {
+                    displayLocation.innerHTML = '<i class="bi bi-geo-alt-fill text-muted me-1"></i> Gagal Geolocation';
+                });
+        }
         
         let hasReachedBottom = false;
         
@@ -395,6 +452,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         btnContinue.addEventListener('click', () => {
+            // Trigger AJAX audit log on agreement
+            const formData = new FormData();
+            formData.append('action', 'log_declaration');
+            formData.append('location', locationText);
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            });
+
             if (usernameInput) usernameInput.removeAttribute('disabled');
             if (passwordInput) passwordInput.removeAttribute('disabled');
             if (roleSelect) roleSelect.removeAttribute('disabled');
