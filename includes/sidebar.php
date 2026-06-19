@@ -222,7 +222,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 
             <!-- Group: PMB (Penerimaan Murid Baru) -->
             <?php if ($role === 'super_admin' || $role === 'operator' || $role === 'kepala_sekolah'): ?>
-                <?php $is_pmb_active = in_array($active, ['pmb_data', 'pmb_setting']); ?>
+                <?php $is_pmb_active = in_array($active, ['pmb_data', 'pmb_setting', 'pmb_akun']); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center justify-content-between <?php echo $is_pmb_active ? '' : 'collapsed'; ?>" 
                        data-bs-toggle="collapse" 
@@ -241,6 +241,12 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
                                 <a class="nav-link <?php echo $active === 'pmb_data' ? 'active' : ''; ?>" href="<?php echo $prefix; ?>pmb/index.php">
                                     <i class="bi bi-people-fill"></i>
                                     <span>Data Pendaftar</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?php echo $active === 'pmb_akun' ? 'active' : ''; ?>" href="<?php echo $prefix; ?>pmb/akun.php">
+                                    <i class="bi bi-person-badge-fill"></i>
+                                    <span>Akun Wali PMB</span>
                                 </a>
                             </li>
                             <?php if ($role === 'super_admin' || $role === 'operator'): ?>
