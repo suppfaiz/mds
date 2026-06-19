@@ -109,10 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             --card-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
         }
         body {
-            background-color: #f8fafc;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.06) 0px, transparent 50%), 
-                radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.03) 0px, transparent 50%);
+            background-image: linear-gradient(rgba(248, 250, 252, 0.85), rgba(248, 250, 252, 0.9)), url('../assets/img/pondok_bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             min-height: 100vh;
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
             color: #1e293b;
