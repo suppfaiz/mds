@@ -21,6 +21,16 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Override echo untuk POSIX / sh (dash) compatibility
+echo() {
+    if [ "$1" = "-e" ]; then
+        shift
+        printf "%b\n" "$*"
+    else
+        printf "%b\n" "$*"
+    fi
+}
+
 # Bersihkan Layar
 clear
 
@@ -32,7 +42,7 @@ echo -e "${CYAN}Direktori Aplikasi:   $(pwd)${NC}"
 echo ""
 
 # 1. Pastikan dijalankan sebagai root/sudo
-if [ "$EUID" -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
   echo -e "${RED}[ERROR] Harap jalankan skrip ini menggunakan sudo atau sebagai root!${NC}"
   echo -e "${YELLOW}Contoh: sudo sh install.sh${NC}"
   exit 1
@@ -111,6 +121,7 @@ DB_PASS=$(openssl rand -base64 16 | tr -d '/=+' | cut -c1-16)
 # Kueri MySQL untuk setup database
 mysql -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
+mysql -e "ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
 mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
 
