@@ -91,9 +91,13 @@ fi
 echo -e "${GREEN}[OK] Pembaruan paket selesai.${NC}"
 echo ""
 
-# 4. Instalasi Apache, MariaDB, PHP & Ekstensi yang Dibutuhkan
-echo -e "${BLUE}[2/7] Menginstal Apache2, MariaDB, PHP & dependensi lainnya...${NC}"
-apt-get install -y apache2 mariadb-server php php-mysql php-xml php-mbstring php-curl php-gd unzip curl openssl
+# Hentikan Apache2 terlebih dahulu jika sedang berjalan agar port 80 tidak bentrok
+systemctl stop apache2 2>/dev/null
+systemctl disable apache2 2>/dev/null
+
+# 4. Instalasi Nginx, MariaDB, PHP-FPM & Ekstensi yang Dibutuhkan
+echo -e "${BLUE}[2/7] Menginstal Nginx, MariaDB, PHP-FPM & dependensi lainnya...${NC}"
+apt-get install -y nginx mariadb-server php-fpm php-mysql php-xml php-mbstring php-curl php-gd unzip curl openssl
 if [ $? -ne 0 ]; then
     echo -e "${RED}[ERROR] Instalasi dependensi gagal. Pastikan repository apt Anda aktif.${NC}"
     exit 1
@@ -102,12 +106,19 @@ echo -e "${GREEN}[OK] Instalasi paket selesai.${NC}"
 echo ""
 
 # 5. Menyalakan & Mengaktifkan Layanan Server
-echo -e "${BLUE}[3/7] Mengaktifkan layanan Apache2 dan MariaDB...${NC}"
-systemctl start apache2
-systemctl enable apache2
+echo -e "${BLUE}[3/7] Mengaktifkan layanan Nginx, MariaDB, dan PHP-FPM...${NC}"
+systemctl start nginx
+systemctl enable nginx
 systemctl start mariadb
 systemctl enable mariadb
-echo -e "${GREEN}[OK] Layanan Apache2 & MariaDB berhasil berjalan.${NC}"
+
+# Cari nama unit service php-fpm yang terinstal secara dinamis
+FPM_SERVICE=$(systemctl list-unit-files | grep -E -o 'php[0-9.]+-fpm\.service' | head -n 1)
+if [ -n "$FPM_SERVICE" ]; then
+    systemctl start "$FPM_SERVICE"
+    systemctl enable "$FPM_SERVICE"
+fi
+echo -e "${GREEN}[OK] Layanan Nginx, MariaDB, & PHP-FPM berhasil berjalan.${NC}"
 echo ""
 
 # 6. Konfigurasi Database (Membuat User & Database Aman)
@@ -161,30 +172,62 @@ else
 fi
 echo ""
 
-# 8. Konfigurasi VirtualHost Apache & Hak Akses Folder
-echo -e "${BLUE}[7/7] Mengatur konfigurasi web server Apache & Hak Akses...${NC}"
+# 8. Konfigurasi VirtualHost Nginx & Hak Akses Folder
+echo -e "${BLUE}[7/7] Mengatur konfigurasi web server Nginx & Hak Akses...${NC}"
 
 APP_DIR=$(pwd)
 
-# Tulis file VirtualHost baru ke Apache untuk mengarahkan ke folder saat ini & izinkan .htaccess (.htaccess)
-cat <<EOF > /etc/apache2/sites-available/000-default.conf
-<VirtualHost *:80>
-    ServerAdmin webmaster@localhost
-    DocumentRoot ${APP_DIR}
+# Cari file socket PHP-FPM yang aktif di sistem secara dinamis
+PHP_SOCK=$(find /run/php/ -name "php*.sock" | head -n 1)
+if [ -z "$PHP_SOCK" ]; then
+    # Jika tidak ketemu, coba backup default path berdasarkan FPM service
+    PHP_VERSION=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+    PHP_SOCK="/run/php/php${PHP_VERSION}-fpm.sock"
+fi
 
-    <Directory ${APP_DIR}>
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
+# Tulis file Server Block baru ke Nginx
+cat <<EOF > /etc/nginx/sites-available/default
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
 
-    ErrorLog \${APACHE_LOG_DIR}/error.log
-    CustomLog \${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>
+    root ${APP_DIR};
+    index index.php index.html index.htm;
+
+    server_name _;
+
+    # Menonaktifkan listing direktori untuk keamanan
+    autoindex off;
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    # Blok akses langsung ke dokumen privat (menggantikan Deny from all di .htaccess)
+    location /uploads/secure/ {
+        deny all;
+        return 403;
+    }
+
+    # Teruskan request PHP ke socket PHP-FPM
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:${PHP_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # Blok akses berkas konfigurasi sensitif (.git, .htaccess, dll)
+    location ~ /\.ht {
+        deny all;
+    }
+}
 EOF
 
-# Aktifkan modul Rewrite (untuk htaccess)
-a2enmod rewrite
+# Pastikan symlink Nginx sites-enabled aktif
+if [ ! -f /etc/nginx/sites-enabled/default ]; then
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>/dev/null
+fi
 
 # Atur Kepemilikan & Hak Akses berkas
 chown -R www-data:www-data "${APP_DIR}"
@@ -193,9 +236,19 @@ find "${APP_DIR}" -type f -exec chmod 644 {} \;
 # Pastikan skrip installer ini tetap executable
 chmod +x "${APP_DIR}/install.sh"
 
-# Restart Apache
-systemctl restart apache2
-echo -e "${GREEN}[OK] Konfigurasi Apache & Hak Akses berhasil diperbarui.${NC}"
+# Tes konfigurasi Nginx dan Restart
+nginx -t
+if [ $? -eq 0 ]; then
+    systemctl restart nginx
+    # Restart php-fpm juga untuk penyegaran
+    if [ -n "$FPM_SERVICE" ]; then
+        systemctl restart "$FPM_SERVICE"
+    fi
+    echo -e "${GREEN}[OK] Konfigurasi Nginx & Hak Akses berhasil diperbarui.${NC}"
+else
+    echo -e "${RED}[ERROR] Konfigurasi Nginx salah! Periksa kembali file /etc/nginx/sites-available/default.${NC}"
+    exit 1
+fi
 echo ""
 
 # Dapatkan IP Lokal Server
