@@ -136,17 +136,21 @@ if (!empty($grades)) {
         =========================== */
         *, *::before, *::after { box-sizing: border-box; }
 
-        html, body {
+        html {
             max-width: 100%;
             overflow-x: hidden;
-            overscroll-behavior: none;
-            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-x: none;
         }
 
         body {
+            max-width: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior-x: none;
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
             background-color: #f4f6fb;
-            padding-bottom: calc(72px + env(safe-area-inset-bottom));
+            padding-bottom: calc(80px + env(safe-area-inset-bottom));
         }
 
         [data-bs-theme="dark"] body {
@@ -1091,14 +1095,18 @@ if (!empty($grades)) {
            SCROLLABLE SECTION
         =========================== */
         .scrollable-list {
-            max-height: 400px;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            overflow-y: visible;
         }
 
-        .scrollable-list::-webkit-scrollbar { width: 4px; }
-        .scrollable-list::-webkit-scrollbar-track { background: transparent; }
-        .scrollable-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+        @media (min-width: 768px) {
+            .scrollable-list {
+                max-height: 420px;
+                overflow-y: auto;
+            }
+            .scrollable-list::-webkit-scrollbar { width: 4px; }
+            .scrollable-list::-webkit-scrollbar-track { background: transparent; }
+            .scrollable-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+        }
 
         /* ===========================
            RECEIPT BUTTON
@@ -1157,6 +1165,11 @@ if (!empty($grades)) {
             .profile-avatar { width: 76px; height: 76px; }
             .profile-name { font-size: 22px; }
             .copy-toast { bottom: 40px; }
+        }
+
+        /* Ensure nothing is clipped */
+        .page-container, .section-card, .tab-section {
+            overflow: visible !important;
         }
     </style>
 </head>
