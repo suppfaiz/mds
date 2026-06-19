@@ -33,9 +33,9 @@ function checkRole($allowedRoles, $isRoot = false) {
     if (!in_array($_SESSION['role'], $allowedRoles)) {
         $_SESSION['error_message'] = "Anda tidak memiliki hak akses ke halaman tersebut.";
         if ($isRoot) {
-            header("Location: index.php");
+            header("Location: dashboard_core.php");
         } else {
-            header("Location: ../index.php");
+            header("Location: ../dashboard_core.php");
         }
         exit();
     }

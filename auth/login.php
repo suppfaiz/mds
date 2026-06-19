@@ -17,7 +17,7 @@ if (empty($_SESSION['admin_gate'])) {
 
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
-    header("Location: ../index.php");
+    header("Location: ../dashboard_core.php");
     exit();
 }
 

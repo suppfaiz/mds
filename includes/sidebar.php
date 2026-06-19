@@ -17,7 +17,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
         <ul class="nav flex-column">
             <!-- Dashboard Link -->
             <li class="nav-item">
-                <a class="nav-link <?php echo $active === 'dashboard' ? 'active' : ''; ?>" href="<?php echo $prefix; ?>index.php">
+                <a class="nav-link <?php echo $active === 'dashboard' ? 'active' : ''; ?>" href="<?php echo $prefix; ?>dashboard_core.php">
                     <i class="bi bi-speedometer2"></i>
                     <span>Dashboard</span>
                 </a>
