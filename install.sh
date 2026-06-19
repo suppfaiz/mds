@@ -129,14 +129,27 @@ DB_USER="mds_user"
 # Hasilkan password acak yang aman
 DB_PASS=$(openssl rand -base64 16 | tr -d '/=+' | cut -c1-16)
 
-# Kueri MySQL untuk setup database
+# Kueri MySQL untuk setup database lokal & remote
 mysql -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
 mysql -e "ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
 mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
+
+# Buat juga user remote '%' agar bisa diakses langsung via DBeaver
+mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS}';"
+mysql -e "ALTER USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS}';"
+mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';"
 mysql -e "FLUSH PRIVILEGES;"
 
-echo -e "${GREEN}[OK] Database \`${DB_NAME}\` dan user \`${DB_USER}\` berhasil dibuat.${NC}"
+# Konfigurasi MariaDB agar mendengarkan di semua interface (akses remote)
+MARIADB_CONF="/etc/mysql/mariadb.conf.d/50-server.cnf"
+if [ -f "$MARIADB_CONF" ]; then
+    echo -e "${BLUE}[INFO] Membuka port remote MariaDB (bind-address = 0.0.0.0)...${NC}"
+    sed -i "s/bind-address\s*=\s*127.0.0.1/bind-address = 0.0.0.0/g" "$MARIADB_CONF"
+    systemctl restart mariadb
+fi
+
+echo -e "${GREEN}[OK] Database \`${DB_NAME}\` dan user \`${DB_USER}\` (lokal & remote) berhasil dikonfigurasi.${NC}"
 echo ""
 
 # Impor skema database SQL
