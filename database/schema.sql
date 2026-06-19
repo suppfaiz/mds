@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password` VARCHAR(255) NOT NULL,
   `role` ENUM('super_admin', 'operator', 'guru', 'kepala_sekolah') NOT NULL,
   `nama_lengkap` VARCHAR(100) NOT NULL,
+  `totp_secret` VARCHAR(32) DEFAULT NULL,
+  `totp_enabled` TINYINT(1) DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

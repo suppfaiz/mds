@@ -200,6 +200,12 @@ echo ""
 # 8. Konfigurasi VirtualHost Nginx & Hak Akses Folder
 echo -e "${BLUE}[7/7] Mengatur konfigurasi web server Nginx & Hak Akses...${NC}"
 
+# Salin konfigurasi rate limiting global ke conf.d Nginx
+if [ -f "nginx_rate_limit.conf" ]; then
+    echo -e "${BLUE}[INFO] Mengonfigurasi modul Nginx Rate Limiting...${NC}"
+    cp nginx_rate_limit.conf /etc/nginx/conf.d/rate_limit.conf
+fi
+
 APP_DIR=$(pwd)
 
 # Cari file socket PHP-FPM yang aktif di sistem secara dinamis
@@ -232,6 +238,7 @@ server {
     # Tidak pakai rewrite — lebih simpel dan pasti bekerja.
     # =========================================================
     location ~ ^/01aac7d617a6d8b2 {
+        limit_req zone=login_limit burst=5 nodelay;
         fastcgi_pass  unix:\${PHP_SOCK};
         fastcgi_param SCRIPT_FILENAME \${APP_DIR}/gate.php;
         fastcgi_param REQUEST_URI     \$request_uri;
@@ -280,6 +287,39 @@ server {
     # Blok akses langsung ke folder includes/ (disembunyikan dengan 404)
     location ^~ /includes/ {
         return 404;
+    }
+
+    # Limit requests on login and registration pages to prevent brute force
+    location = /auth/login.php {
+        limit_req zone=login_limit burst=5 nodelay;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:\${PHP_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location = /pmb/login.php {
+        limit_req zone=login_limit burst=5 nodelay;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:\${PHP_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location = /ortu/login.php {
+        limit_req zone=login_limit burst=5 nodelay;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:\${PHP_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location = /pmb/register.php {
+        limit_req zone=login_limit burst=5 nodelay;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:\${PHP_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
     }
 
     # Teruskan request PHP ke socket PHP-FPM

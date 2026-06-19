@@ -6,6 +6,7 @@ $active_menu = 'pengaturan';
 require_once $path_prefix . 'config/db.php';
 require_once $path_prefix . 'includes/auth_check.php';
 require_once $path_prefix . 'includes/audit.php';
+require_once $path_prefix . 'includes/image_helper.php';
 
 // Only Super Admin can access school settings
 checkRole(['super_admin']);
@@ -74,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $dest_path = $upload_dir . $new_file_name;
                     
                     if (move_uploaded_file($file_tmp, $dest_path)) {
+                            compressImage($dest_path);
                         // Delete old logo file if exists
                         if (!empty($settings['logo']) && file_exists('../' . $settings['logo'])) {
                             unlink('../' . $settings['logo']);

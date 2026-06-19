@@ -3,12 +3,26 @@ $path_prefix = '../';
 require_once $path_prefix . 'config/db.php';
 require_once $path_prefix . 'includes/auth_check.php';
 
-// Auth check
-checkLogin();
+// Allow access to logged in staff or parents
+$is_staff = isset($_SESSION['user_id']);
+$is_parent = isset($_SESSION['parent_logged_in']) && isset($_SESSION['parent_siswa_id']);
+
+if (!$is_staff && !$is_parent) {
+    header("Location: ../index.php");
+    exit();
+}
 
 $siswa_id = isset($_GET['siswa_id']) ? (int)$_GET['siswa_id'] : 0;
 if (!$siswa_id) {
     die("ID Siswa tidak valid.");
+}
+
+// BOLA/IDOR Protection: Ensure parents can only view their own child's grades
+if ($is_parent && !$is_staff) {
+    if ($siswa_id !== (int)$_SESSION['parent_siswa_id']) {
+        http_response_code(403);
+        die("Akses ditolak: Anda tidak memiliki wewenang untuk melihat rapor siswa lain.");
+    }
 }
 
 $semester = isset($_GET['semester']) ? $_GET['semester'] : 'Ganjil';

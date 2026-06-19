@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once $path_prefix . 'config/db.php';
+require_once $path_prefix . 'includes/image_helper.php';
 
 // Generate CSRF token if not exists
 if (empty($_SESSION['csrf_token'])) {
@@ -144,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $target_path = $secure_dir . $secure_name;
                         
                         if (move_uploaded_file($file_tmp, $target_path)) {
+                        compressImage($target_path);
                             $uploaded_file = 'uploads/secure/' . $secure_name;
                         } else {
                             $error = 'Gagal menyimpan dokumen bukti di server.';

@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once $path_prefix . 'config/db.php';
+require_once $path_prefix . 'includes/image_helper.php';
 
 // Auth Check: Redirect to login if session pmb_parent_id is missing
 if (!isset($_SESSION['pmb_parent_id'])) {
@@ -74,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $target_path = $secure_dir . $secure_name;
                     
                     if (move_uploaded_file($file_tmp, $target_path)) {
+                        compressImage($target_path);
                         $new_file_path = 'uploads/secure/' . $secure_name;
                         
                         // Delete old file if exists

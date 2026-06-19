@@ -97,6 +97,12 @@ $prefix = isset($path_prefix) ? $path_prefix : '';
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 text-secondary-emphasis" href="<?php echo $prefix; ?>users/totp_setup.php">
+                                <i class="bi bi-shield-lock-fill text-warning"></i> Keamanan 2FA
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
                             <a class="dropdown-item text-danger d-flex align-items-center gap-2" href="<?php echo $prefix; ?>auth/logout.php">
                                 <i class="bi bi-box-arrow-right"></i> Keluar
                             </a>

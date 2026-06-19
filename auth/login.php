@@ -102,6 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Regenerate session ID to prevent fixation attacks
                         session_regenerate_id(true);
 
+                        // Check if TOTP (2FA) is enabled for this user
+                        if ((int)($user['totp_enabled'] ?? 0) === 1 && !empty($user['totp_secret'])) {
+                            $_SESSION['totp_pending_user_id'] = $user['id'];
+                            logActivity($pdo, 'Login Tahap 1', 'Kredensial password cocok untuk user: ' . $username . '. Menunggu verifikasi 2FA.');
+                            header("Location: totp_verify.php");
+                            exit();
+                        }
+
                         $_SESSION['user_id']      = $user['id'];
                         $_SESSION['username']     = $user['username'];
                         $_SESSION['role']         = $user['role'];

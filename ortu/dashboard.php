@@ -1490,12 +1490,20 @@ if (!empty($grades)) {
                 $sem_avg = round($sem_sum / count($semester_grades), 1);
             ?>
             <div class="section-card">
-                <div class="section-card-header">
-                    <h2 class="section-card-title" style="font-size:12.5px;">
+                <div class="section-card-header d-flex justify-content-between align-items-center">
+                    <h2 class="section-card-title" style="font-size:12.5px; margin-bottom: 0;">
                         <span class="section-icon" style="background:#eff6ff;"><i class="bi bi-calendar3" style="color:#6366f1;font-size:13px;"></i></span>
                         <?php echo htmlspecialchars($semester_name); ?>
                     </h2>
-                    <span class="semester-avg">Rata-rata: <?php echo $sem_avg; ?></span>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="semester-avg">Rata-rata: <?php echo $sem_avg; ?></span>
+                        <?php
+                            list($th_ajar, $sem_val) = explode(' — Semester ', $semester_name);
+                        ?>
+                        <a href="../rapor/print.php?siswa_id=<?php echo (int)$_SESSION['parent_siswa_id']; ?>&semester=<?php echo urlencode($sem_val); ?>&tahun_ajaran=<?php echo urlencode($th_ajar); ?>" target="_blank" style="padding: 4px 8px; font-size: 11px; background: rgba(99, 102, 241, 0.12); color: #6366f1; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font-weight: 600; transition: all 0.2s;">
+                            <i class="bi bi-printer" style="font-size:12px;"></i> Cetak Rapor
+                        </a>
+                    </div>
                 </div>
                 <div class="section-card-body">
                     <?php foreach ($semester_grades as $grade):
