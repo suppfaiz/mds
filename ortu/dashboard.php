@@ -289,6 +289,7 @@ $month_names = [
                 font-size: 1.15rem !important;
             }
         }
+    </style>
 </head>
 <body>
 
