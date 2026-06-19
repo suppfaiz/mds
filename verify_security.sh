@@ -43,9 +43,9 @@ check_url() {
 
 echo -e "\n${BLUE}[1/3] Menguji Proteksi Folder & File Sensitif (Nginx Hardening)...${NC}"
 echo -e "----------------------------------------------------------------------"
-check_url "/config/db.php" "403" "Memblokir akses langsung ke folder config/db.php"
+check_url "/config/db.php" "404" "Memblokir akses langsung ke folder config/db.php"
 check_url "/database/schema.sql" "404" "Memblokir unduhan berkas skema SQL awal (.sql)"
-check_url "/includes/audit.php" "403" "Memblokir akses langsung ke folder includes/"
+check_url "/includes/audit.php" "404" "Memblokir akses langsung ke folder includes/"
 check_url "/.env" "404" "Memblokir akses berkas konfigurasi rahasia .env"
 check_url "/install.sh" "404" "Memblokir akses langsung berkas skrip instalasi .sh"
 
