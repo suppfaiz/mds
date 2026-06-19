@@ -231,6 +231,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="text-center small text-muted">
             Sudah memiliki akun? <a href="login.php" class="text-decoration-none fw-semibold">Masuk Di Sini</a>
         </div>
+        <div class="text-center mt-2 small text-muted" style="font-size: 11.5px;">
+            Apakah Anda orang tua/wali murid? <a href="../ortu/login.php" class="text-decoration-none fw-semibold">Masuk Portal Wali &rarr;</a>
+        </div>
     </form>
 </div>
 
