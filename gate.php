@@ -14,7 +14,7 @@ if (strpos($uri, '/01aac7d617a6d8b2') !== 0) {
     exit('Forbidden.');
 }
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+require_once 'config/db.php';
 
 // Set penanda sesi — admin masuk via path yang benar
 $_SESSION['admin_gate']      = hash('sha256', '01aac7d617a6d8b2' . date('Y-m-d'));
