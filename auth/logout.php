@@ -17,6 +17,7 @@ unset($_SESSION['username']);
 unset($_SESSION['role']);
 unset($_SESSION['nama_lengkap']);
 
+session_write_close();
 header("Location: login.php");
 exit();
 ?>
