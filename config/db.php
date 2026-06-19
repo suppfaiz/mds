@@ -81,6 +81,16 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
+
+    // Auto-migration: Ensure TOTP columns exist in the active users table
+    try {
+        $check_stmt = $pdo->query("SHOW COLUMNS FROM `users` LIKE 'totp_secret'");
+        if (!$check_stmt->fetch()) {
+            $pdo->exec("ALTER TABLE `users` ADD COLUMN `totp_secret` VARCHAR(32) DEFAULT NULL, ADD COLUMN `totp_enabled` TINYINT(1) DEFAULT 0");
+        }
+    } catch (PDOException $e) {
+        // Ignore if database/table is not initialized yet
+    }
 } catch (PDOException $e) {
     die("Koneksi database gagal: " . $e->getMessage());
 }
