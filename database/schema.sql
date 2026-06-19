@@ -100,13 +100,13 @@ CREATE TABLE IF NOT EXISTS `nilai` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Initial seeds
-INSERT INTO `users` (`id`, `username`, `password`, `role`, `nama_lengkap`) VALUES
+INSERT IGNORE INTO `users` (`id`, `username`, `password`, `role`, `nama_lengkap`) VALUES
 (1, 'admin', '$2y$12$4fCmQG1SdyFR862lnr.Qw.P9/K9tJsVNA6DznFmnqDOryQxdd.p5C', 'super_admin', 'Administrator Super'),
 (2, 'operator', '$2y$12$4H7yFPRExpXSqtLARsxp2ODh/4sreHDnzmIePAIv1CaE8LCkVIkmq', 'operator', 'Operator Sekolah'),
 (3, 'guru', '$2y$12$gmea2Un/.L/DHnT3ZfGyO.G1BqmhmWM4A99vyuABEkSAs6.KPYbPS', 'guru', 'Guru Pengajar'),
 (4, 'kepsek', '$2y$12$.C8j4sm1uTw3uotHg2KJkO.ZqfrBXLwjs.416jRNQ9FEBVPICtjV.', 'kepala_sekolah', 'Kepala Sekolah');
 
-INSERT INTO `kelas` (`id`, `nama_kelas`) VALUES
+INSERT IGNORE INTO `kelas` (`id`, `nama_kelas`) VALUES
 (1, 'Kelas X-A'),
 (2, 'Kelas X-B'),
 (3, 'Kelas XI-IPA'),
@@ -115,19 +115,19 @@ INSERT INTO `kelas` (`id`, `nama_kelas`) VALUES
 (6, 'Kelas XII-IPS');
 
 -- Siswa seeds
-INSERT INTO `siswa` (`id`, `nis`, `nisn`, `nama`, `jenis_kelamin`, `tempat_lahir`, `tanggal_lahir`, `alamat`, `agama`, `kelas_id`, `tahun_masuk`, `no_hp`, `email`, `nama_ayah`, `nama_ibu`) VALUES
+INSERT IGNORE INTO `siswa` (`id`, `nis`, `nisn`, `nama`, `jenis_kelamin`, `tempat_lahir`, `tanggal_lahir`, `alamat`, `agama`, `kelas_id`, `tahun_masuk`, `no_hp`, `email`, `nama_ayah`, `nama_ibu`) VALUES
 (1, '20260001', '0091234567', 'Budi Santoso', 'L', 'Jakarta', '2009-08-15', 'Jl. Merdeka No. 123, Jakarta', 'Islam', 1, 2025, '081234567890', 'budi.santoso@siswa.sch.id', 'Ahmad Santoso', 'Siti Aminah');
 
 -- Guru seeds
-INSERT INTO `guru` (`id`, `nip`, `nama`, `mata_pelajaran`, `jabatan`, `pendidikan_terakhir`, `no_hp`, `email`, `alamat`) VALUES
+INSERT IGNORE INTO `guru` (`id`, `nip`, `nama`, `mata_pelajaran`, `jabatan`, `pendidikan_terakhir`, `no_hp`, `email`, `alamat`) VALUES
 (1, '198503122010121002', 'Aisyah Rahmawati, S.Pd.', 'Matematika', 'Wali Kelas', 'D4 / S1', '089876543210', 'aisyah.rahma@guru.sch.id', 'Jl. Melati No. 45, Bandung');
 
 -- Nilai seeds
-INSERT INTO `nilai` (`id`, `siswa_id`, `mata_pelajaran`, `nilai_tugas`, `nilai_uts`, `nilai_uas`, `nilai_akhir`, `semester`, `tahun_ajaran`, `keterangan`) VALUES
+INSERT IGNORE INTO `nilai` (`id`, `siswa_id`, `mata_pelajaran`, `nilai_tugas`, `nilai_uts`, `nilai_uas`, `nilai_akhir`, `semester`, `tahun_ajaran`, `keterangan`) VALUES
 (1, 1, 'Matematika', 80.00, 85.00, 90.00, 85.50, 'Ganjil', '2025/2026', 'Pertahankan prestasi Anda!');
 
 -- Dokumen seeds
-INSERT INTO `dokumen` (`id`, `tipe_data`, `data_id`, `kategori`, `nama_file`, `lokasi_file`) VALUES
+INSERT IGNORE INTO `dokumen` (`id`, `tipe_data`, `data_id`, `kategori`, `nama_file`, `lokasi_file`) VALUES
 (1, 'siswa', 1, 'Akta Kelahiran', 'akta_kelahiran_budi.pdf', 'uploads/siswa/akta_kelahiran_budi.pdf'),
 (2, 'guru', 1, 'KTP', 'ktp_aisyah.pdf', 'uploads/guru/ktp_aisyah.pdf');
 
@@ -163,12 +163,12 @@ CREATE TABLE IF NOT EXISTS `payroll` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Karyawan seeds
-INSERT INTO `karyawan` (`id`, `nik`, `nama`, `jabatan`, `no_hp`, `email`, `alamat`) VALUES
+INSERT IGNORE INTO `karyawan` (`id`, `nik`, `nama`, `jabatan`, `no_hp`, `email`, `alamat`) VALUES
 (1, '3201021234560001', 'Slamet Basuki', 'Staf TU (Tata Usaha)', '085712345678', 'slamet.tu@pegawai.sch.id', 'Jl. Kenanga No. 12, Bandung'),
 (2, '3201027890120002', 'Bambang Triyono', 'Petugas Keamanan', '085876543210', 'bambang.security@pegawai.sch.id', 'Jl. Mawar No. 34, Bandung');
 
 -- Payroll seeds
-INSERT INTO `payroll` (`tipe_penerima`, `penerima_id`, `bulan`, `tahun`, `gaji_pokok`, `tunjangan`, `potongan`, `gaji_bersih`, `status_bayar`, `tanggal_bayar`, `catatan`) VALUES
+INSERT IGNORE INTO `payroll` (`tipe_penerima`, `penerima_id`, `bulan`, `tahun`, `gaji_pokok`, `tunjangan`, `potongan`, `gaji_bersih`, `status_bayar`, `tanggal_bayar`, `catatan`) VALUES
 ('guru', 1, 6, 2026, 4000000.00, 500000.00, 150000.00, 4350000.00, 'Dibayar', '2026-06-15', 'Gaji bulan Juni 2026'),
 ('karyawan', 1, 6, 2026, 3000000.00, 300000.00, 100000.00, 3200000.00, 'Dibayar', '2026-06-15', 'Gaji bulan Juni 2026'),
 ('karyawan', 2, 6, 2026, 2500000.00, 200000.00, 80000.00, 2620000.00, 'Belum Dibayar', NULL, 'Gaji bulan Juni 2026');
@@ -250,12 +250,12 @@ CREATE TABLE IF NOT EXISTS `presensi_pegawai` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Attendance seeds
-INSERT INTO `presensi_siswa` (`siswa_id`, `tanggal`, `status`, `keterangan`) VALUES
+INSERT IGNORE INTO `presensi_siswa` (`siswa_id`, `tanggal`, `status`, `keterangan`) VALUES
 (1, '2026-06-15', 'Hadir', 'Tepat waktu'),
 (1, '2026-06-16', 'Hadir', 'Tepat waktu'),
 (1, '2026-06-17', 'Hadir', 'Tepat waktu');
 
-INSERT INTO `presensi_pegawai` (`tipe_penerima`, `penerima_id`, `tanggal`, `status`, `keterangan`) VALUES
+INSERT IGNORE INTO `presensi_pegawai` (`tipe_penerima`, `penerima_id`, `tanggal`, `status`, `keterangan`) VALUES
 ('guru', 1, '2026-06-17', 'Hadir', 'Mengajar Matematika'),
 ('karyawan', 1, '2026-06-17', 'Hadir', 'Tugas TU'),
 ('karyawan', 2, '2026-06-17', 'Izin', 'Urusan keluarga');
@@ -290,9 +290,9 @@ CREATE TABLE IF NOT EXISTS `rapor_catatan` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Rapor & Wali seeds
-INSERT INTO `wali_kelas` (`guru_id`, `kelas_id`) VALUES (1, 1);
+INSERT IGNORE INTO `wali_kelas` (`guru_id`, `kelas_id`) VALUES (1, 1);
 
-INSERT INTO `rapor_catatan` (`siswa_id`, `semester`, `tahun_ajaran`, `ekstrakurikuler`, `kelakuan`, `kerajinan`, `kerapihan`, `catatan`) VALUES
+INSERT IGNORE INTO `rapor_catatan` (`siswa_id`, `semester`, `tahun_ajaran`, `ekstrakurikuler`, `kelakuan`, `kerajinan`, `kerapihan`, `catatan`) VALUES
 (1, 'Ganjil', '2025/2026', 'Pramuka: Baik, Futsal: Cukup', 'A', 'B', 'A', 'Pertahankan prestasi akademik Anda!');
 
 -- 16. Table keuangan_transaksi
