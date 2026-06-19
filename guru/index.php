@@ -154,14 +154,14 @@ include $path_prefix . 'includes/header.php';
                                 <td><?php echo htmlspecialchars($teacher['no_hp']); ?></td>
                                 <td class="px-4 text-end">
                                     <div class="d-flex justify-content-end gap-1">
-                                        <a href="detail.php?id=<?php echo $teacher['id']; ?>" class="btn btn-sm btn-outline-info" title="Detail Profil & Dokumen">
+                                        <a href="detail.php?id=<?php echo encryptId($teacher['id']); ?>" class="btn btn-sm btn-outline-info" title="Detail Profil & Dokumen">
                                             <i class="bi bi-eye"></i> Profil
                                         </a>
                                         <?php if (hasPermission(['super_admin', 'operator'])): ?>
-                                            <a href="edit.php?id=<?php echo $teacher['id']; ?>" class="btn btn-sm btn-outline-primary" title="Edit Data">
+                                            <a href="edit.php?id=<?php echo encryptId($teacher['id']); ?>" class="btn btn-sm btn-outline-primary" title="Edit Data">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a href="delete.php?id=<?php echo $teacher['id']; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?? ''; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirmDelete('Apakah Anda yakin ingin menghapus data guru ini? Semua file dan dokumen yang terkait akan dihapus secara permanen.')" title="Hapus Data">
+                                            <a href="delete.php?id=<?php echo encryptId($teacher['id']); ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?? ''; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirmDelete('Apakah Anda yakin ingin menghapus data guru ini? Semua file dan dokumen yang terkait akan dihapus secara permanen.')" title="Hapus Data">
                                                 <i class="bi bi-trash"></i>
                                             </a>
                                         <?php endif; ?>

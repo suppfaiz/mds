@@ -155,21 +155,33 @@ else
 fi
 echo ""
 
-# 7. Konfigurasi Aplikasi (Update db.php)
-echo -e "${BLUE}[6/7] Menyesuaikan berkas konfigurasi database...${NC}"
-if [ -f "config/db.php" ]; then
-    # Backup config sebelum diubah
-    cp config/db.php config/db.php.bak
-    
-    # Update username & password ke db.php
-    sed -i "s/\$username = 'root';/\$username = '${DB_USER}';/g" config/db.php
-    sed -i "s/\$password = '';/\$password = '${DB_PASS}';/g" config/db.php
-    
-    echo -e "${GREEN}[OK] Berkas 'config/db.php' berhasil diperbarui dengan kredensial baru.${NC}"
-else
-    echo -e "${RED}[ERROR] Berkas 'config/db.php' tidak ditemukan!${NC}"
-    exit 1
+# 7. Konfigurasi Aplikasi (Create/Update .env)
+echo -e "${BLUE}[6/7] Menyesuaikan berkas konfigurasi .env...${NC}"
+ENV_FILE=".env"
+EXISTING_KEY=""
+
+if [ -f "$ENV_FILE" ]; then
+    # Ambil APP_KEY yang sudah ada agar tidak berubah saat reinstall
+    EXISTING_KEY=$(grep '^APP_KEY=' "$ENV_FILE" | cut -d'=' -f2)
 fi
+
+if [ -z "$EXISTING_KEY" ]; then
+    # Generate key acak 32 karakter jika belum ada
+    APP_KEY=$(openssl rand -base64 32 | tr -d '/=+' | cut -c1-32)
+else
+    APP_KEY="$EXISTING_KEY"
+fi
+
+# Tulis berkas .env baru
+cat <<EOF > "$ENV_FILE"
+DB_HOST=localhost
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASS=${DB_PASS}
+APP_KEY=${APP_KEY}
+EOF
+
+echo -e "${GREEN}[OK] Berkas '.env' berhasil dibuat/diperbarui dengan kredensial baru.${NC}"
 echo ""
 
 # 8. Konfigurasi VirtualHost Nginx & Hak Akses Folder
@@ -185,7 +197,7 @@ if [ -z "$PHP_SOCK" ]; then
     PHP_SOCK="/run/php/php${PHP_VERSION}-fpm.sock"
 fi
 
-# Tulis file Server Block baru ke Nginx
+# Tulis file Server Block baru ke Nginx dengan pengaman berkas sensitif & anti-webshell
 cat <<EOF > /etc/nginx/sites-available/default
 server {
     listen 80 default_server;
@@ -209,6 +221,17 @@ server {
         return 403;
     }
 
+    # Mencegah eksekusi file PHP di folder uploads (keamanan ekstra anti-webshell)
+    location ~* ^/uploads/.*\.php$ {
+        deny all;
+    }
+
+    # Blok akses langsung ke folder konfigurasi config/
+    location /config/ {
+        deny all;
+        return 403;
+    }
+
     # Teruskan request PHP ke socket PHP-FPM
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
@@ -217,8 +240,8 @@ server {
         include fastcgi_params;
     }
 
-    # Blok akses berkas konfigurasi sensitif (.git, .htaccess, dll)
-    location ~ /\.ht {
+    # Blok akses berkas konfigurasi sensitif (.git, .htaccess, .env, dll)
+    location ~ /\. {
         deny all;
     }
 }

@@ -309,14 +309,14 @@ include $path_prefix . 'includes/header.php';
                                         <a href="<?php echo $wa_link; ?>" target="_blank" class="btn btn-sm btn-outline-success" title="Kirim WA Orang Tua">
                                             <i class="bi bi-whatsapp"></i>
                                         </a>
-                                        <a href="print.php?id=<?php echo $p['spp_id']; ?>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Cetak Kuitansi">
+                                        <a href="print.php?id=<?php echo encryptId($p['spp_id']); ?>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Cetak Kuitansi">
                                             <i class="bi bi-printer"></i>
                                         </a>
                                         <?php if ($is_admin_or_op): ?>
-                                            <a href="edit.php?id=<?php echo $p['spp_id']; ?>" class="btn btn-sm btn-outline-warning text-dark border-warning" title="Edit Transaksi">
+                                            <a href="edit.php?id=<?php echo encryptId($p['spp_id']); ?>" class="btn btn-sm btn-outline-warning text-dark border-warning" title="Edit Transaksi">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a href="delete.php?id=<?php echo $p['spp_id']; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?? ''; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus catatan pembayaran SPP ini?')" title="Hapus Transaksi">
+                                            <a href="delete.php?id=<?php echo encryptId($p['spp_id']); ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?? ''; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus catatan pembayaran SPP ini?')" title="Hapus Transaksi">
                                                 <i class="bi bi-trash"></i>
                                             </a>
                                         <?php endif; ?>

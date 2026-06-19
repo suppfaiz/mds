@@ -265,11 +265,11 @@ include $path_prefix . 'includes/header.php';
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex justify-content-center gap-1">
-                                        <a href="detail.php?id=<?php echo $a['id']; ?>" class="btn btn-sm btn-outline-primary py-1 px-2" title="Lihat Profil Detail">
+                                        <a href="detail.php?id=<?php echo encryptId($a['id']); ?>" class="btn btn-sm btn-outline-primary py-1 px-2" title="Lihat Profil Detail">
                                             <i class="bi bi-file-earmark-person" style="font-size: 11px;"></i> Detail
                                         </a>
                                         <?php if ($role === 'super_admin' || $role === 'operator'): ?>
-                                            <a href="delete.php?id=<?php echo $a['id']; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?? ''; ?>" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="return confirmDelete('Apakah Anda yakin ingin menghapus data calon pendaftar ini?')" title="Hapus Berkas PMB">
+                                            <a href="delete.php?id=<?php echo encryptId($a['id']); ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?? ''; ?>" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="return confirmDelete('Apakah Anda yakin ingin menghapus data calon pendaftar ini?')" title="Hapus Berkas PMB">
                                                 <i class="bi bi-trash" style="font-size: 11px;"></i>
                                             </a>
                                         <?php endif; ?>
