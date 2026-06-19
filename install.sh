@@ -221,6 +221,12 @@ server {
         return 403;
     }
 
+    # Mencegah akses langsung dari luar ke berkas dokumen sensitif di folder uploads
+    location ~* ^/uploads/.*\.(pdf|docx|xlsx|doc|xls|zip|rar|txt|csv)$ {
+        deny all;
+        return 403;
+    }
+
     # Mencegah eksekusi file PHP di folder uploads (keamanan ekstra anti-webshell)
     location ~* ^/uploads/.*\.php$ {
         deny all;
@@ -228,6 +234,18 @@ server {
 
     # Blok akses langsung ke folder konfigurasi config/
     location /config/ {
+        deny all;
+        return 403;
+    }
+
+    # Blok akses langsung ke folder database/
+    location /database/ {
+        deny all;
+        return 403;
+    }
+
+    # Blok akses langsung ke folder includes/
+    location /includes/ {
         deny all;
         return 403;
     }
