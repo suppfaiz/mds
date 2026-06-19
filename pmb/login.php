@@ -53,6 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $parent = $stmt->fetch();
                 
                 if ($parent && password_verify($password, $parent['password'])) {
+                    // Cek apakah email sudah terverifikasi
+                    if ((int)$parent['is_verified'] !== 1) {
+                        $_SESSION['pending_verification_email'] = $parent['email'];
+                        $_SESSION['error_message'] = 'Akun Anda belum diverifikasi. Silakan masukkan kode OTP yang telah dikirim ke email Anda.';
+                        header("Location: verify.php");
+                        exit();
+                    }
+
                     // Establish Parent session
                     $_SESSION['pmb_parent_id'] = $parent['id'];
                     $_SESSION['pmb_parent_nama'] = $parent['nama'];

@@ -57,25 +57,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Hash password
                     $hashed_password = password_hash($password, PASSWORD_BCRYPT);
                     
-                    // Insert account
+                    // Generate 6-Digit OTP Token
+                    $otp = (string)rand(100000, 999999);
+                    
+                    // Insert account as unverified
                     $stmt_insert = $pdo->prepare("
-                        INSERT INTO pmb_akun (nama, email, password, no_hp) 
-                        VALUES (?, ?, ?, ?)
+                        INSERT INTO pmb_akun (nama, email, password, no_hp, is_verified, verification_token) 
+                        VALUES (?, ?, ?, ?, 0, ?)
                     ");
-                    $stmt_insert->execute([$nama, $email, $hashed_password, $no_hp]);
+                    $stmt_insert->execute([$nama, $email, $hashed_password, $no_hp, $otp]);
                     
-                    $parent_id = $pdo->lastInsertId();
+                    // Set pending email in session
+                    $_SESSION['pending_verification_email'] = $email;
                     
-                    // Establish Parent session
-                    $_SESSION['pmb_parent_id'] = $parent_id;
-                    $_SESSION['pmb_parent_nama'] = $nama;
-                    $_SESSION['pmb_parent_email'] = $email;
-                    $_SESSION['pmb_parent_no_hp'] = $no_hp;
+                    // Send Email
+                    require_once $path_prefix . 'includes/mail.php';
+                    sendVerificationEmail($email, $nama, $otp);
                     
                     // Regenerate CSRF for security
                     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                     
-                    header("Location: dashboard.php");
+                    header("Location: verify.php");
                     exit();
                 }
             } catch (PDOException $e) {

@@ -314,6 +314,8 @@ CREATE TABLE IF NOT EXISTS `pmb_akun` (
   `email` VARCHAR(100) UNIQUE NOT NULL,
   `password` VARCHAR(255) NOT NULL,
   `no_hp` VARCHAR(20) NOT NULL,
+  `is_verified` TINYINT(1) DEFAULT 0,
+  `verification_token` VARCHAR(6) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
