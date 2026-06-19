@@ -13,10 +13,19 @@ if (isset($_SESSION['parent_logged_in']) && isset($_SESSION['parent_siswa_id']))
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Honeypot anti-bot check
+    $honeypot = $_POST['honeypot'] ?? '';
+    // Captcha checkbox verification
+    $is_human = $_POST['is_human'] ?? '';
+
     // Validate CSRF
     $csrf_token = $_POST['csrf_token'] ?? '';
     if (empty($csrf_token) || $csrf_token !== ($_SESSION['csrf_token'] ?? '')) {
         $error = 'Token keamanan tidak valid. Silakan muat ulang halaman.';
+    } elseif (!empty($honeypot)) {
+        $error = 'Akses ditolak (Terdeteksi aktivitas bot).';
+    } elseif (empty($is_human) || $is_human !== 'on') {
+        $error = 'Harap verifikasi bahwa Anda bukan robot.';
     } else {
         $nisn = trim($_POST['nisn'] ?? '');
         $tanggal_lahir = trim($_POST['tanggal_lahir'] ?? '');
@@ -114,11 +123,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label for="tanggal_lahir" class="form-label small fw-semibold">Tanggal Lahir Siswa</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-calendar-event"></i></span>
                                 <input type="date" class="form-control" id="tanggal_lahir" name="tanggal_lahir" required>
+                            </div>
+                        </div>
+
+                        <!-- Honeypot anti-bot field -->
+                        <div style="display: none;">
+                            <input type="text" name="honeypot" id="honeypot" tabindex="-1" autocomplete="off">
+                        </div>
+
+                        <!-- Custom "Saya bukan robot" Captcha -->
+                        <div class="mb-4 d-flex justify-content-center">
+                            <div class="captcha-container d-flex align-items-center justify-content-between p-3 border rounded" style="width: 100%; max-width: 320px; height: 74px; border-color: rgba(255,255,255,0.15); background: rgba(0,0,0,0.15); user-select: none;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="captcha-checkbox-wrapper position-relative">
+                                        <input type="checkbox" name="is_human" id="is_human" class="d-none" required>
+                                        <div class="captcha-box d-flex align-items-center justify-content-center border border-2 border-secondary" style="width: 28px; height: 28px; border-radius: 4px; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.05);">
+                                            <i class="bi bi-check-lg text-success d-none fs-4 fw-bold"></i>
+                                            <div class="spinner-border spinner-border-sm text-primary d-none" role="status" style="width: 18px; height: 18px;"></div>
+                                        </div>
+                                    </div>
+                                    <label for="is_human" class="captcha-label mb-0 fw-semibold text-white-50" style="font-size: 13.5px; cursor: pointer;">Saya bukan robot</label>
+                                </div>
+                                <div class="d-flex flex-column align-items-center text-white-50" style="font-size: 9px; line-height: 1.2;">
+                                    <i class="bi bi-shield-fill-check text-primary fs-3"></i>
+                                    <span class="mt-1" style="font-size: 8px;">MDS Secure</span>
+                                </div>
                             </div>
                         </div>
                         
@@ -149,5 +183,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Custom "Saya bukan robot" Captcha Interactive Logic
+const captchaBox = document.querySelector('.captcha-box');
+const captchaCheckbox = document.getElementById('is_human');
+const captchaLabel = document.querySelector('.captcha-label');
+const checkIcon = captchaBox?.querySelector('.bi-check-lg');
+const spinner = captchaBox?.querySelector('.spinner-border');
+
+if (captchaBox && captchaCheckbox) {
+    captchaBox.addEventListener('click', () => {
+        if (captchaCheckbox.checked) return;
+        
+        captchaBox.classList.remove('border-secondary');
+        captchaBox.classList.add('border-light');
+        spinner.classList.remove('d-none');
+        
+        setTimeout(() => {
+            spinner.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            captchaBox.classList.remove('border-light');
+            captchaBox.classList.add('border-success');
+            captchaBox.style.background = 'rgba(25, 135, 84, 0.15)';
+            
+            captchaCheckbox.checked = true;
+        }, 1000);
+    });
+
+    if (captchaLabel) {
+        captchaLabel.addEventListener('click', (e) => {
+            e.preventDefault();
+            captchaBox.click();
+        });
+    }
+}
+</script>
 </body>
 </html>

@@ -56,11 +56,19 @@ $error = '';
 $attempts_left = MAX_LOGIN_ATTEMPTS - (int)($_SESSION[$attempts_key] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Honeypot anti-bot check
+    $honeypot = $_POST['honeypot'] ?? '';
+    // Captcha checkbox verification
+    $is_human = $_POST['is_human'] ?? '';
 
     // Validate CSRF token
     $submitted_token = $_POST['csrf_token'] ?? '';
     if (!hash_equals($_SESSION['csrf_token'], $submitted_token)) {
         $error = 'Permintaan tidak valid. Silakan muat ulang halaman.';
+    } elseif (!empty($honeypot)) {
+        $error = 'Akses ditolak (Terdeteksi aktivitas bot).';
+    } elseif (empty($is_human) || $is_human !== 'on') {
+        $error = 'Harap verifikasi bahwa Anda bukan robot.';
     } elseif ($is_locked) {
         $error = 'Terlalu banyak percobaan login. Coba lagi dalam ' . ceil($lockout_remaining / 60) . ' menit.';
     } else {
@@ -197,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label for="role" class="form-label small fw-semibold">Hak Akses</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-shield-lock"></i></span>
@@ -208,6 +216,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <option value="guru">Guru</option>
                                     <option value="kepala_sekolah">Kepala Sekolah</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- Honeypot anti-bot field -->
+                        <div style="display: none;">
+                            <input type="text" name="honeypot" id="honeypot" tabindex="-1" autocomplete="off">
+                        </div>
+
+                        <!-- Custom "Saya bukan robot" Captcha -->
+                        <div class="mb-4 d-flex justify-content-center">
+                            <div class="captcha-container d-flex align-items-center justify-content-between p-3 border rounded" style="width: 100%; max-width: 320px; height: 74px; border-color: rgba(255,255,255,0.15); background: rgba(0,0,0,0.15); user-select: none;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="captcha-checkbox-wrapper position-relative">
+                                        <input type="checkbox" name="is_human" id="is_human" class="d-none" required>
+                                        <div class="captcha-box d-flex align-items-center justify-content-center border border-2 border-secondary" style="width: 28px; height: 28px; border-radius: 4px; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.05);">
+                                            <i class="bi bi-check-lg text-success d-none fs-4 fw-bold"></i>
+                                            <div class="spinner-border spinner-border-sm text-primary d-none" role="status" style="width: 18px; height: 18px;"></div>
+                                        </div>
+                                    </div>
+                                    <label for="is_human" class="captcha-label mb-0 fw-semibold text-white-50" style="font-size: 13.5px; cursor: pointer;">Saya bukan robot</label>
+                                </div>
+                                <div class="d-flex flex-column align-items-center text-white-50" style="font-size: 9px; line-height: 1.2;">
+                                    <i class="bi bi-shield-fill-check text-primary fs-3"></i>
+                                    <span class="mt-1" style="font-size: 8px;">MDS Secure</span>
+                                </div>
                             </div>
                         </div>
                         
@@ -247,6 +280,40 @@ if (togglePass && passInput) {
         passInput.type = isPass ? 'text' : 'password';
         eyeIcon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
     });
+}
+
+// Custom "Saya bukan robot" Captcha Interactive Logic
+const captchaBox = document.querySelector('.captcha-box');
+const captchaCheckbox = document.getElementById('is_human');
+const captchaLabel = document.querySelector('.captcha-label');
+const checkIcon = captchaBox?.querySelector('.bi-check-lg');
+const spinner = captchaBox?.querySelector('.spinner-border');
+
+if (captchaBox && captchaCheckbox) {
+    captchaBox.addEventListener('click', () => {
+        if (captchaCheckbox.checked) return;
+        
+        captchaBox.classList.remove('border-secondary');
+        captchaBox.classList.add('border-light');
+        spinner.classList.remove('d-none');
+        
+        setTimeout(() => {
+            spinner.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            captchaBox.classList.remove('border-light');
+            captchaBox.classList.add('border-success');
+            captchaBox.style.background = 'rgba(25, 135, 84, 0.15)';
+            
+            captchaCheckbox.checked = true;
+        }, 1000);
+    });
+
+    if (captchaLabel) {
+        captchaLabel.addEventListener('click', (e) => {
+            e.preventDefault();
+            captchaBox.click();
+        });
+    }
 }
 </script>
 </body>
