@@ -4,9 +4,9 @@
 #            INSTALLER MASTER DATA SEKOLAH (MDS) - LINUX VPS (Ubuntu/Debian)
 # ==============================================================================
 #
-# Skrip ini menginstal seluruh stack web server (Apache, PHP, MariaDB),
+# Skrip ini menginstal seluruh stack web server (Nginx, PHP-FPM, MariaDB),
 # membuat database, mengimpor skema, mengatur hak akses, dan
-# mengonfigurasi Apache untuk mendukung file .htaccess.
+# mengonfigurasi Nginx server block serta mengamankan folder sensitif.
 #
 # Cara menjalankan:
 # sudo sh install.sh
@@ -68,7 +68,7 @@ if [ "$CURRENT_DIR" != "$TARGET_DIR" ]; then
     echo -e "${BLUE}[INFO] Menyiapkan direktori target: ${TARGET_DIR}...${NC}"
     # Buat direktori target secara rekursif
     mkdir -p "$TARGET_DIR"
-    # Atur izin direktori induk /var/www/mds agar dapat diakses oleh Apache
+    # Atur izin direktori induk /var/www/mds agar dapat diakses oleh Nginx
     chmod 755 /var/www/mds
     
     echo -e "${BLUE}[INFO] Menyalin file proyek ke ${TARGET_DIR}...${NC}"
