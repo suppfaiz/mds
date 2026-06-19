@@ -50,6 +50,27 @@ echo -e "${GREEN}[INFO] Sistem Operasi Terdeteksi: ${OS_NAME}${NC}"
 echo -e "${YELLOW}[INFO] Memulai proses instalasi stack server...${NC}"
 echo ""
 
+# Setup Target Directory /var/www/mds/mds
+TARGET_DIR="/var/www/mds/mds"
+CURRENT_DIR="$(pwd)"
+
+if [ "$CURRENT_DIR" != "$TARGET_DIR" ]; then
+    echo -e "${BLUE}[INFO] Menyiapkan direktori target: ${TARGET_DIR}...${NC}"
+    # Buat direktori target secara rekursif
+    mkdir -p "$TARGET_DIR"
+    # Atur izin direktori induk /var/www/mds agar dapat diakses oleh Apache
+    chmod 755 /var/www/mds
+    
+    echo -e "${BLUE}[INFO] Menyalin file proyek ke ${TARGET_DIR}...${NC}"
+    # Salin seluruh isi folder proyek ke target
+    cp -r "$CURRENT_DIR"/. "$TARGET_DIR"/
+    
+    # Pindah ke direktori target agar proses berikutnya berjalan di tempat yang tepat
+    cd "$TARGET_DIR"
+    echo -e "${GREEN}[OK] File proyek berhasil disalin ke ${TARGET_DIR}.${NC}"
+    echo ""
+fi
+
 # 3. Update Package List & Upgrade Minimal
 echo -e "${BLUE}[1/7] Memperbarui daftar paket sistem...${NC}"
 apt-get update -y
