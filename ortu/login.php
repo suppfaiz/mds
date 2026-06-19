@@ -164,8 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <div class="text-center mt-4">
-                <div class="d-flex justify-content-between">
-                    <a href="../auth/login.php" class="text-white-50 small text-decoration-none fw-semibold"><i class="bi bi-person-workspace text-warning me-1"></i> Portal Staff/Guru</a>
+                <div class="d-flex justify-content-center">
                     <a href="../pmb/login.php" class="text-white-50 small text-decoration-none fw-semibold">Portal PMB &rarr;</a>
                 </div>
             </div>
