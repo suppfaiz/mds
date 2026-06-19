@@ -4,6 +4,17 @@ $path_prefix = '../';
 require_once $path_prefix . 'config/db.php';
 require_once $path_prefix . 'includes/audit.php';
 
+// =====================================================
+// GATE CHECK: Hanya izinkan akses jika datang via
+// path rahasia (session 'admin_gate' harus sudah diset)
+// =====================================================
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (empty($_SESSION['admin_gate'])) {
+    // Tidak ada gate session → tampilkan 404 generik
+    http_response_code(404);
+    exit('404 Not Found.');
+}
+
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
     header("Location: ../index.php");
@@ -80,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         logActivity($pdo, 'Login', 'User berhasil login dengan hak akses: ' . $role);
 
-                        header("Location: ../index.php");
+                        header("Location: ../dashboard_core.php");
                         exit();
                     } else {
                         $_SESSION[$attempts_key] = ($_SESSION[$attempts_key] ?? 0) + 1;
