@@ -19,7 +19,6 @@ try {
     $siswa = $stmt->fetch();
     
     if (!$siswa) {
-        // Jika data siswa mendadak hilang/terhapus, hapus sesi
         session_destroy();
         header("Location: login.php");
         exit();
@@ -53,7 +52,7 @@ try {
         $payment_map[$payment['tahun'] . '-' . $payment['bulan']] = $payment;
     }
 
-    // Hitung status pembayaran SPP 12 Bulan Terakhir secara dinamis
+    // Hitung status pembayaran SPP 12 Bulan Terakhir
     $months_billing = [];
     $current_time = time();
     for ($i = 11; $i >= 0; $i--) {
@@ -76,12 +75,7 @@ try {
     }
 
     // 5. Ambil Ringkasan Kehadiran
-    $att_summary_stmt = $pdo->prepare("
-        SELECT status, COUNT(*) as jumlah 
-        FROM presensi_siswa 
-        WHERE siswa_id = ? 
-        GROUP BY status
-    ");
+    $att_summary_stmt = $pdo->prepare("SELECT status, COUNT(*) as jumlah FROM presensi_siswa WHERE siswa_id = ? GROUP BY status");
     $att_summary_stmt->execute([$siswa_id]);
     $att_summary_raw = $att_summary_stmt->fetchAll();
     
@@ -93,13 +87,7 @@ try {
     }
 
     // 6. Ambil Log Kehadiran Terakhir
-    $att_logs_stmt = $pdo->prepare("
-        SELECT tanggal, status, keterangan 
-        FROM presensi_siswa 
-        WHERE siswa_id = ? 
-        ORDER BY tanggal DESC 
-        LIMIT 15
-    ");
+    $att_logs_stmt = $pdo->prepare("SELECT tanggal, status, keterangan FROM presensi_siswa WHERE siswa_id = ? ORDER BY tanggal DESC LIMIT 15");
     $att_logs_stmt->execute([$siswa_id]);
     $att_logs = $att_logs_stmt->fetchAll();
 
@@ -108,981 +96,1650 @@ try {
 }
 
 $month_names = [
+    1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+    7 => 'Jul', 8 => 'Ags', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+];
+$month_names_full = [
     1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
     7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
 ];
+
+$rate = $total_att_days > 0 ? round(($att_summary['Hadir'] / $total_att_days) * 100) : 100;
+$avg_score = 0;
+if (!empty($grades)) {
+    $sum = 0;
+    foreach ($grades as $g) $sum += (float)$g['nilai_akhir'];
+    $avg_score = round($sum / count($grades), 1);
+}
 ?>
 <!DOCTYPE html>
 <html lang="id" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Orang Tua - Master Data Sekolah</title>
-    <!-- Google Fonts Plus Jakarta Sans & Outfit -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Portal Orang Tua - <?php echo htmlspecialchars($siswa['nama']); ?></title>
+    <meta name="description" content="Portal informasi akademik dan pembayaran SPP untuk orang tua/wali murid.">
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="../assets/css/style.css" rel="stylesheet">
+
     <style>
-        /* Lock layout boundary to prevent horizontal and bounce scroll */
+        /* ===========================
+           BASE & RESET
+        =========================== */
+        *, *::before, *::after { box-sizing: border-box; }
+
         html, body {
             max-width: 100%;
             overflow-x: hidden;
-            overscroll-behavior-x: none;
-        }
-        /* CSS Tambahan khusus Portal Orang Tua agar responsif maksimal di HP */
-        .parent-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1.5rem 1rem;
-            overflow-x: hidden;
-        }
-        .nav-pills .nav-link {
-            border-radius: 12px;
-            font-weight: 600;
-            color: var(--text-muted);
-            border: 1px solid transparent;
-            padding: 0.75rem 1rem;
-            transition: all 0.3s ease;
-        }
-        .nav-pills .nav-link.active {
-            background: var(--primary-gradient);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-            color: #ffffff !important;
-        }
-        .nav-pills .nav-link:hover:not(.active) {
-            background: rgba(99, 102, 241, 0.05);
-            color: var(--primary-color);
-        }
-        .stat-card-parent {
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-            border: 1px solid var(--border-color);
-            transition: transform 0.2s ease, border-color 0.2s ease;
-        }
-        .stat-card-parent:hover {
-            transform: translateY(-2px);
-        }
-        .profile-hero-card {
-            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-            border-radius: 20px;
-            color: #ffffff;
-            border: none;
-            box-shadow: 0 10px 25px rgba(49, 46, 129, 0.15);
-        }
-        [data-bs-theme="dark"] .stat-card-parent {
-            background-color: var(--bg-card);
-        }
-        
-        /* Bottom Navigation Bar for Mobile */
-        .bottom-nav-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 68px;
-            background-color: var(--bg-card);
-            border-top: 1px solid var(--border-color);
-            z-index: 1030;
-            display: none;
-            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
-            backdrop-filter: blur(15px);
-            background: rgba(var(--bg-card), 0.94);
-            padding-bottom: env(safe-area-inset-bottom);
+            overscroll-behavior: none;
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .bottom-nav-item {
+        body {
+            background-color: #f4f6fb;
+            padding-bottom: calc(72px + env(safe-area-inset-bottom));
+        }
+
+        [data-bs-theme="dark"] body {
+            background-color: #0f1117;
+        }
+
+        /* ===========================
+           TOP NAVBAR
+        =========================== */
+        .top-navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+
+        [data-bs-theme="dark"] .top-navbar {
+            background: rgba(15, 17, 23, 0.92);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .navbar-brand-logo {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .navbar-school-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e1b4b;
+            line-height: 1.2;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        [data-bs-theme="dark"] .navbar-school-name { color: #e2e8f0; }
+
+        .navbar-sub {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .btn-logout {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #ef4444;
+            border: 1px solid #fecaca;
+            background: #fff5f5;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        [data-bs-theme="dark"] .btn-logout {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.25);
+            color: #f87171;
+        }
+
+        .btn-logout:hover { background: #fee2e2; color: #dc2626; }
+
+        /* ===========================
+           THEME TOGGLE
+        =========================== */
+        .theme-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 50px;
+            background: #f1f5f9;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        [data-bs-theme="dark"] .theme-pill {
+            background: #1e293b;
+        }
+
+        .theme-pill i { font-size: 13px; }
+
+        /* ===========================
+           PAGE CONTAINER
+        =========================== */
+        .page-container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px 12px;
+        }
+
+        @media (min-width: 768px) {
+            .page-container {
+                max-width: 960px;
+                padding: 24px 20px;
+            }
+            body { padding-bottom: 16px; }
+        }
+
+        /* ===========================
+           PROFILE HERO CARD
+        =========================== */
+        .profile-hero {
+            background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 50%, #6d28d9 100%);
+            border-radius: 20px;
+            padding: 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .profile-hero::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 160px;
+            height: 160px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
+        }
+
+        .profile-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            left: 30%;
+            width: 120px;
+            height: 120px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+        }
+
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-avatar i { font-size: 28px; color: rgba(255,255,255,0.7); }
+
+        .profile-name {
+            font-size: 17px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.3px;
+        }
+
+        .profile-meta {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .profile-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        /* ===========================
+           QUICK STATS ROW
+        =========================== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 14px 12px;
+            text-align: center;
+            border: 1px solid #e8eaf2;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        [data-bs-theme="dark"] .stat-card {
+            background: #1a1d2e;
+            border-color: #2d3147;
+        }
+
+        .stat-card:active { transform: scale(0.97); }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 16px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+
+        .stat-label {
+            font-size: 9.5px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===========================
+           SECTION CARDS
+        =========================== */
+        .section-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #e8eaf2;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        [data-bs-theme="dark"] .section-card {
+            background: #1a1d2e;
+            border-color: #2d3147;
+        }
+
+        .section-card-header {
+            padding: 16px 18px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        [data-bs-theme="dark"] .section-card-header {
+            border-bottom-color: #2d3147;
+        }
+
+        .section-card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e1b4b;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        [data-bs-theme="dark"] .section-card-title { color: #e2e8f0; }
+
+        .section-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .section-card-body { padding: 16px 18px; }
+
+        /* ===========================
+           INFO ROW (Label: Value pairs)
+        =========================== */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 12px;
+        }
+
+        [data-bs-theme="dark"] .info-row { border-bottom-color: #2d3147; }
+
+        .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .info-row:first-child { padding-top: 0; }
+
+        .info-label {
+            font-size: 11.5px;
+            color: #94a3b8;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1e293b;
+            text-align: right;
+        }
+
+        [data-bs-theme="dark"] .info-value { color: #cbd5e1; }
+
+        /* ===========================
+           SPP PAYMENT ITEMS
+        =========================== */
+        .spp-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 0;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 8px;
+        }
+
+        [data-bs-theme="dark"] .spp-item { border-bottom-color: #2d3147; }
+        .spp-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .spp-item:first-child { padding-top: 0; }
+
+        .spp-month-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: var(--text-muted);
-            font-size: 10.5px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.25s ease;
-            flex-grow: 1;
-            height: 100%;
-            border: none;
-            background: transparent;
-            outline: none;
-        }
-
-        .bottom-nav-item i {
-            font-size: 1.35rem;
-            margin-bottom: 2px;
-            transition: transform 0.2s ease;
-        }
-
-        .bottom-nav-item:hover i {
-            transform: translateY(-1px);
-        }
-
-        .bottom-nav-item.active {
-            color: var(--primary-color);
-        }
-
-        /* Mobile cards design for SPP & Grades */
-        .mobile-card {
-            border-radius: 14px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-card);
-            padding: 1.15rem;
-            margin-bottom: 0.85rem;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
-            transition: transform 0.2s ease, border-color 0.2s ease;
-        }
-
-        .mobile-card:active {
-            transform: scale(0.99);
-        }
-
-        .mobile-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-        }
-
-        .mobile-card-title {
+            font-size: 10px;
             font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--text-primary);
+            flex-shrink: 0;
+            line-height: 1.2;
+        }
+
+        .spp-month-icon.paid {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #d1fae5;
+        }
+
+        [data-bs-theme="dark"] .spp-month-icon.paid {
+            background: rgba(5, 150, 105, 0.12);
+            border-color: rgba(5, 150, 105, 0.2);
+        }
+
+        .spp-month-icon.unpaid {
+            background: #fff7ed;
+            color: #ea580c;
+            border: 1px solid #fed7aa;
+        }
+
+        [data-bs-theme="dark"] .spp-month-icon.unpaid {
+            background: rgba(234, 88, 12, 0.12);
+            border-color: rgba(234, 88, 12, 0.2);
+        }
+
+        .spp-month-name { font-size: 11px; font-weight: 800; }
+        .spp-month-year { font-size: 9px; font-weight: 500; opacity: 0.8; }
+
+        .spp-info { flex: 1; min-width: 0; }
+
+        .spp-period {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
             margin: 0;
         }
 
-        .mobile-grid-grades {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            text-align: center;
-            background: rgba(99, 102, 241, 0.04);
-            border-radius: 8px;
-            padding: 8px;
-            margin-bottom: 0.5rem;
-            border: 1px solid rgba(99, 102, 241, 0.08);
+        [data-bs-theme="dark"] .spp-period { color: #e2e8f0; }
+
+        .spp-amount {
+            font-size: 11px;
+            color: #94a3b8;
+            margin: 0;
         }
 
-        [data-bs-theme="dark"] .mobile-grid-grades {
-            background: rgba(99, 102, 241, 0.08);
-        }
-
-        .mobile-grid-item {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .mobile-grid-value {
+        .badge-pill {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10.5px;
             font-weight: 700;
-            font-size: 0.85rem;
-            color: var(--text-primary);
-            margin-top: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
         }
 
-        @media (max-width: 767.98px) {
-            .bottom-nav-bar {
-                display: flex;
-                justify-content: space-around;
-                align-items: center;
-            }
-            .parent-container {
-                padding-bottom: 85px; /* Prevent content from being hidden behind bottom nav */
-            }
+        .badge-paid {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #bbf7d0;
         }
-        
-        @media (max-width: 576px) {
-            .profile-hero-card .profile-img-container {
-                width: 80px !important;
-                height: 80px !important;
-            }
-            .stat-card-parent h4 {
-                font-size: 1.15rem !important;
-            }
+
+        [data-bs-theme="dark"] .badge-paid {
+            background: rgba(5, 150, 105, 0.15);
+            border-color: rgba(5, 150, 105, 0.25);
+            color: #34d399;
+        }
+
+        .badge-unpaid {
+            background: #fff1f2;
+            color: #e11d48;
+            border: 1px solid #fecdd3;
+        }
+
+        [data-bs-theme="dark"] .badge-unpaid {
+            background: rgba(225, 29, 72, 0.15);
+            border-color: rgba(225, 29, 72, 0.25);
+            color: #fb7185;
+        }
+
+        /* ===========================
+           GRADES
+        =========================== */
+        .grade-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 8px;
+        }
+
+        [data-bs-theme="dark"] .grade-item { border-bottom-color: #2d3147; }
+        .grade-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .grade-item:first-child { padding-top: 0; }
+
+        .grade-subject {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0;
+            flex: 1;
+            min-width: 0;
+        }
+
+        [data-bs-theme="dark"] .grade-subject { color: #e2e8f0; }
+
+        .grade-score-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .grade-A { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+        .grade-B { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .grade-C { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .grade-D { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+
+        [data-bs-theme="dark"] .grade-A { background: rgba(5,150,105,0.12); border-color: rgba(5,150,105,0.2); }
+        [data-bs-theme="dark"] .grade-B { background: rgba(37,99,235,0.12); border-color: rgba(37,99,235,0.2); }
+        [data-bs-theme="dark"] .grade-C { background: rgba(217,119,6,0.12); border-color: rgba(217,119,6,0.2); }
+        [data-bs-theme="dark"] .grade-D { background: rgba(225,29,72,0.12); border-color: rgba(225,29,72,0.2); }
+
+        /* ===========================
+           ATTENDANCE ITEMS
+        =========================== */
+        .att-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        [data-bs-theme="dark"] .att-item { border-bottom-color: #2d3147; }
+        .att-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .att-item:first-child { padding-top: 0; }
+
+        .att-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .att-dot-hadir { background: #22c55e; }
+        .att-dot-sakit { background: #3b82f6; }
+        .att-dot-izin  { background: #f59e0b; }
+        .att-dot-alpa  { background: #ef4444; }
+
+        .att-date {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1e293b;
+            flex: 1;
+        }
+
+        [data-bs-theme="dark"] .att-date { color: #e2e8f0; }
+
+        .att-note {
+            font-size: 11px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* ===========================
+           ATTENDANCE RECAP GRID
+        =========================== */
+        .recap-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .recap-cell {
+            text-align: center;
+            padding: 12px 8px;
+            border-radius: 14px;
+            border: 1px solid transparent;
+        }
+
+        .recap-cell-hadir { background: #f0fdf4; border-color: #bbf7d0; }
+        .recap-cell-sakit { background: #eff6ff; border-color: #bfdbfe; }
+        .recap-cell-izin  { background: #fffbeb; border-color: #fde68a; }
+        .recap-cell-alpa  { background: #fff1f2; border-color: #fecdd3; }
+
+        [data-bs-theme="dark"] .recap-cell-hadir { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
+        [data-bs-theme="dark"] .recap-cell-sakit { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); }
+        [data-bs-theme="dark"] .recap-cell-izin  { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+        [data-bs-theme="dark"] .recap-cell-alpa  { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); }
+
+        .recap-num {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .recap-num-hadir { color: #16a34a; }
+        .recap-num-sakit { color: #2563eb; }
+        .recap-num-izin  { color: #d97706; }
+        .recap-num-alpa  { color: #dc2626; }
+
+        .recap-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        /* ===========================
+           ATTENDANCE RATE RING
+        =========================== */
+        .rate-ring-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #e8eaf2;
+        }
+
+        [data-bs-theme="dark"] .rate-ring-wrapper {
+            background: #131520;
+            border-color: #2d3147;
+        }
+
+        .rate-ring-svg { flex-shrink: 0; }
+
+        .rate-ring-info h3 {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .rate-ring-info p {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 4px 0 0;
+        }
+
+        /* ===========================
+           BANK INFO CARD
+        =========================== */
+        .bank-info-box {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 1px solid #a7f3d0;
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+
+        [data-bs-theme="dark"] .bank-info-box {
+            background: rgba(5, 150, 105, 0.1);
+            border-color: rgba(5, 150, 105, 0.25);
+        }
+
+        .bank-rek-number {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #065f46;
+            font-variant-numeric: tabular-nums;
+        }
+
+        [data-bs-theme="dark"] .bank-rek-number { color: #34d399; }
+
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            background: #059669;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-copy:hover { background: #047857; }
+        .btn-copy:active { transform: scale(0.97); }
+
+        /* ===========================
+           BILLING SUMMARY
+        =========================== */
+        .billing-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        [data-bs-theme="dark"] .billing-row { border-bottom-color: #2d3147; }
+        .billing-row:last-child { border-bottom: none; }
+        .billing-row:first-child { padding-top: 0; }
+
+        .billing-label { font-size: 12.5px; color: #64748b; }
+        .billing-value { font-size: 13px; font-weight: 700; color: #1e293b; }
+        [data-bs-theme="dark"] .billing-value { color: #e2e8f0; }
+
+        .billing-total-row {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #fecaca;
+        }
+
+        [data-bs-theme="dark"] .billing-total-row {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .billing-total-label { font-size: 12px; font-weight: 600; color: #dc2626; }
+        .billing-total-value { font-size: 18px; font-weight: 800; color: #dc2626; }
+
+        /* ===========================
+           TAB CONTENT SECTIONS
+        =========================== */
+        .tab-section { display: none; }
+        .tab-section.active { display: block; }
+
+        /* ===========================
+           DESKTOP TAB NAV
+        =========================== */
+        .desktop-tab-nav {
+            display: none;
+            background: white;
+            border-radius: 16px;
+            padding: 6px;
+            border: 1px solid #e8eaf2;
+            margin-bottom: 20px;
+            gap: 4px;
+        }
+
+        [data-bs-theme="dark"] .desktop-tab-nav {
+            background: #1a1d2e;
+            border-color: #2d3147;
+        }
+
+        @media (min-width: 768px) {
+            .desktop-tab-nav { display: flex; }
+        }
+
+        .desktop-tab-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .desktop-tab-btn.active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* ===========================
+           BOTTOM NAV BAR (MOBILE)
+        =========================== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(60px + env(safe-area-inset-bottom));
+            padding-bottom: env(safe-area-inset-bottom);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        [data-bs-theme="dark"] .bottom-nav {
+            background: rgba(15, 17, 23, 0.95);
+            border-top-color: rgba(255,255,255,0.06);
+        }
+
+        @media (min-width: 768px) {
+            .bottom-nav { display: none; }
+        }
+
+        .bottom-nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            height: 60px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 9.5px;
+            font-weight: 600;
+            gap: 3px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            padding: 0;
+            position: relative;
+        }
+
+        .bottom-nav-btn i {
+            font-size: 20px;
+            transition: transform 0.2s ease;
+        }
+
+        .bottom-nav-btn.active {
+            color: #6366f1;
+        }
+
+        .bottom-nav-btn.active i {
+            transform: translateY(-1px);
+        }
+
+        .bottom-nav-btn.active::before {
+            content: '';
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 32px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 10px;
+        }
+
+        /* ===========================
+           EMPTY STATE
+        =========================== */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            margin: 0;
+        }
+
+        /* ===========================
+           SEMESTER HEADER
+        =========================== */
+        .semester-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0 10px;
+            border-bottom: 2px solid #f1f5f9;
+            margin-bottom: 4px;
+        }
+
+        [data-bs-theme="dark"] .semester-header { border-bottom-color: #2d3147; }
+
+        .semester-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #6366f1;
+        }
+
+        .semester-avg {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 9px;
+            background: rgba(99,102,241,0.08);
+            color: #6366f1;
+            border-radius: 20px;
+            border: 1px solid rgba(99,102,241,0.15);
+        }
+
+        /* ===========================
+           ANNOUNCEMENT CARD
+        =========================== */
+        .announcement-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+
+        [data-bs-theme="dark"] .announcement-card {
+            background: rgba(37, 99, 235, 0.1);
+            border-color: rgba(37, 99, 235, 0.2);
+        }
+
+        .announcement-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1d4ed8;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        [data-bs-theme="dark"] .announcement-title { color: #60a5fa; }
+
+        .announcement-text {
+            font-size: 12px;
+            color: #1e40af;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        [data-bs-theme="dark"] .announcement-text { color: #93c5fd; }
+
+        /* ===========================
+           CONTACT CARD
+        =========================== */
+        .contact-number {
+            font-size: 20px;
+            font-weight: 800;
+            color: #6366f1;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===========================
+           COPY TOAST
+        =========================== */
+        .copy-toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #1e293b;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 9999;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .copy-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===========================
+           SCROLLABLE SECTION
+        =========================== */
+        .scrollable-list {
+            max-height: 400px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .scrollable-list::-webkit-scrollbar { width: 4px; }
+        .scrollable-list::-webkit-scrollbar-track { background: transparent; }
+        .scrollable-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+        /* ===========================
+           RECEIPT BUTTON
+        =========================== */
+        .btn-receipt {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 11px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-receipt:hover { background: #f1f5f9; color: #334155; }
+
+        [data-bs-theme="dark"] .btn-receipt {
+            background: #1e293b;
+            border-color: #334155;
+            color: #94a3b8;
+        }
+
+        .btn-pay {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 11px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #c2410c;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-pay:hover { background: #ffedd5; }
+
+        [data-bs-theme="dark"] .btn-pay {
+            background: rgba(234,88,12,0.1);
+            border-color: rgba(234,88,12,0.2);
+            color: #fb923c;
+        }
+
+        @media (min-width: 768px) {
+            .stats-row { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+            .profile-hero { padding: 28px; }
+            .profile-avatar { width: 76px; height: 76px; }
+            .profile-name { font-size: 22px; }
+            .copy-toast { bottom: 40px; }
         }
     </style>
 </head>
 <body>
 
-<!-- Header / Topbar Navigation -->
-<nav class="navbar navbar-expand-lg top-nav px-2 px-sm-3 py-2.5 py-sm-3 border-bottom sticky-top bg-body shadow-sm" style="backdrop-filter: blur(10px); background: rgba(var(--bg-card), 0.9);">
-    <div class="container max-width-1200 d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-1.5 gap-sm-2" style="min-width: 0; flex: 1;">
-            <i class="bi bi-mortarboard-fill text-primary fs-3 flex-shrink-0"></i>
-            <div style="min-width: 0;">
-                <h5 class="m-0 fw-bold text-dark-emphasis text-truncate" style="font-size: 14px; max-width: 140px;"><?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?></h5>
-                <span class="text-muted small d-block text-truncate" style="font-size: 10px; max-width: 140px;">Wali Murid</span>
-            </div>
+<!-- Copy Toast Notification -->
+<div class="copy-toast" id="copyToast"><i class="bi bi-check-circle me-2"></i>Nomor rekening disalin!</div>
+
+<!-- ============================
+     TOP NAVBAR
+============================ -->
+<nav class="top-navbar">
+    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+        <div class="navbar-brand-logo">
+            <i class="bi bi-mortarboard-fill"></i>
         </div>
-        
-        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Theme Toggle Switch -->
-            <div class="form-check form-switch m-0 d-flex align-items-center gap-1">
-                <i class="bi bi-sun-fill text-warning d-none d-sm-inline" style="font-size: 13px;"></i>
-                <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle" style="width: 2.2em; height: 1.1em;">
-                <i class="bi bi-moon-stars-fill text-primary d-none d-sm-inline" style="font-size: 13px;"></i>
-            </div>
-            
-            <div class="vr text-secondary"></div>
-            
-            <!-- Logout Button -->
-            <a href="logout.php" class="btn btn-outline-danger btn-sm fw-bold px-2 py-1 d-flex align-items-center justify-content-center" style="font-size: 12px; border-radius: 8px;">
-                <i class="bi bi-box-arrow-right" style="font-size: 13px;"></i> <span class="d-none d-sm-inline">Keluar</span>
-            </a>
+        <div style="min-width:0;">
+            <div class="navbar-school-name"><?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?></div>
+            <div class="navbar-sub">Portal Wali Murid</div>
         </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <!-- Theme Toggle -->
+        <button class="theme-pill" id="themeToggleBtn" aria-label="Toggle theme">
+            <i class="bi bi-sun-fill text-warning" id="iconSun" style="font-size:13px;"></i>
+            <i class="bi bi-moon-stars-fill text-primary d-none" id="iconMoon" style="font-size:13px;"></i>
+        </button>
+        <!-- Logout -->
+        <a href="logout.php" class="btn-logout">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Keluar</span>
+        </a>
     </div>
 </nav>
 
-<div class="parent-container">
-    <!-- Student Header Summary Card -->
-    <div class="card profile-hero-card p-3 p-md-4 mb-4">
-        <div class="row align-items-center g-3 text-start">
-            <div class="col-auto">
-                <div class="profile-img-container bg-white bg-opacity-10 d-flex align-items-center justify-content-center border border-white border-opacity-20 rounded-circle overflow-hidden" style="width: 80px; height: 80px;">
-                    <?php if (!empty($siswa['foto']) && file_exists('../' . $siswa['foto'])): ?>
-                        <img src="../<?php echo htmlspecialchars($siswa['foto']); ?>" alt="Foto" style="width:100%; height:100%; object-fit: cover;">
-                    <?php else: ?>
-                        <i class="bi bi-person text-white-50" style="font-size: 2.5rem;"></i>
-                    <?php endif; ?>
-                </div>
-            </div>
-            
-            <div class="col">
-                <span class="badge bg-warning text-dark fw-bold mb-1 px-2 py-1 text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Kelas <?php echo htmlspecialchars($siswa['nama_kelas'] ?? 'Belum Diatur'); ?></span>
-                <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;"><?php echo htmlspecialchars($siswa['nama']); ?></h4>
-                <p class="text-white-50 small mb-0 mt-1" style="font-size: 11px;">NISN: <?php echo htmlspecialchars($siswa['nisn']); ?> &bull; NIS: <?php echo htmlspecialchars($siswa['nis']); ?></p>
-            </div>
-        </div>
-        <div class="d-flex flex-wrap gap-2 mt-3 pt-2 border-top border-white border-opacity-10">
-            <span class="badge bg-white bg-opacity-10 text-white" style="font-size: 11px;"><i class="bi bi-calendar-check me-1"></i> Angkatan: <?php echo htmlspecialchars($siswa['tahun_masuk']); ?></span>
-            <span class="badge bg-white bg-opacity-10 text-white" style="font-size: 11px;"><i class="bi bi-gender-ambiguous me-1"></i> <?php echo $siswa['jenis_kelamin'] === 'L' ? 'Laki-laki' : 'Perempuan'; ?></span>
-        </div>
-    </div>
+<!-- ============================
+     PAGE CONTENT
+============================ -->
+<div class="page-container">
 
-    <!-- Quick Stats Summary Row -->
-    <div class="row g-2 g-md-3 mb-4">
-        <!-- Attendance Widget -->
-        <div class="col-6 col-md-4">
-            <?php 
-            $rate = $total_att_days > 0 ? round(($att_summary['Hadir'] / $total_att_days) * 100) : 100;
-            $rate_color = 'text-success';
-            if ($rate < 90) $rate_color = 'text-warning';
-            if ($rate < 75) $rate_color = 'text-danger';
-            ?>
-            <div class="card stat-card-parent bg-body h-100 p-2 p-md-3 d-flex flex-row align-items-center justify-content-between">
-                <div style="min-width: 0; flex: 1;">
-                    <span class="text-muted small fw-semibold d-block text-truncate" style="font-size: 11px;">Kehadiran</span>
-                    <h4 class="fw-bold m-0 mt-1 <?php echo $rate_color; ?>" style="font-size: 1.3rem;"><?php echo $rate; ?>%</h4>
-                    <span class="text-muted small text-truncate d-block" style="font-size: 10px;"><?php echo $att_summary['Hadir']; ?>/<?php echo $total_att_days; ?> hari</span>
-                </div>
-                <div class="bg-success bg-opacity-10 text-success rounded-3 p-2 d-none d-sm-flex">
-                    <i class="bi bi-calendar-check-fill fs-4"></i>
-                </div>
+    <!-- PROFILE HERO CARD -->
+    <div class="profile-hero">
+        <div style="display:flex; align-items:center; gap:14px; position:relative; z-index:1;">
+            <div class="profile-avatar">
+                <?php if (!empty($siswa['foto']) && file_exists('../' . $siswa['foto'])): ?>
+                    <img src="../<?php echo htmlspecialchars($siswa['foto']); ?>" alt="Foto Siswa">
+                <?php else: ?>
+                    <i class="bi bi-person-fill"></i>
+                <?php endif; ?>
+            </div>
+            <div style="min-width:0; flex:1;">
+                <h1 class="profile-name"><?php echo htmlspecialchars($siswa['nama']); ?></h1>
+                <p class="profile-meta">NISN: <?php echo htmlspecialchars($siswa['nisn']); ?> &bull; NIS: <?php echo htmlspecialchars($siswa['nis']); ?></p>
             </div>
         </div>
-        
-        <!-- SPP Bills Widget -->
-        <div class="col-6 col-md-4">
-            <div class="card stat-card-parent bg-body h-100 p-2 p-md-3 d-flex flex-row align-items-center justify-content-between">
-                <div style="min-width: 0; flex: 1;">
-                    <span class="text-muted small fw-semibold d-block text-truncate" style="font-size: 11px;">Tunggakan SPP</span>
-                    <h4 class="fw-bold m-0 mt-1 <?php echo $total_tunggakan > 0 ? 'text-danger' : 'text-success'; ?>" style="font-size: 1.15rem;">
-                        Rp<?php echo number_format($total_tunggakan, 0, ',', '.'); ?>
-                    </h4>
-                    <span class="text-muted small text-truncate d-block" style="font-size: 10px;"><?php echo $unpaid_months_count; ?> blm lunas</span>
-                </div>
-                <div class="bg-danger bg-opacity-10 text-danger rounded-3 p-2 d-none d-sm-flex">
-                    <i class="bi bi-wallet2 fs-4"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Grade Average Widget -->
-        <div class="col-12 col-md-4">
-            <?php 
-            $avg_score = 0;
-            if (!empty($grades)) {
-                $sum = 0;
-                foreach ($grades as $g) $sum += (float)$g['nilai_akhir'];
-                $avg_score = round($sum / count($grades), 1);
-            }
-            ?>
-            <div class="card stat-card-parent bg-body h-100 p-2 p-md-3 d-flex flex-row align-items-center justify-content-between">
-                <div style="min-width: 0; flex: 1;">
-                    <span class="text-muted small fw-semibold d-block" style="font-size: 11px;">Rata-rata Rapor</span>
-                    <h4 class="fw-bold m-0 mt-1 text-primary" style="font-size: 1.3rem;"><?php echo $avg_score > 0 ? $avg_score : '-'; ?></h4>
-                    <span class="text-muted small" style="font-size: 10px;"><?php echo count($grades); ?> mapel terinput</span>
-                </div>
-                <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-2">
-                    <i class="bi bi-journal-bookmark-fill fs-4"></i>
-                </div>
-            </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; position:relative; z-index:1;">
+            <span class="profile-badge">
+                <i class="bi bi-mortarboard-fill"></i>
+                Kelas <?php echo htmlspecialchars($siswa['nama_kelas'] ?? 'Belum Diatur'); ?>
+            </span>
+            <span class="profile-badge">
+                <i class="bi bi-calendar3"></i>
+                Angkatan <?php echo htmlspecialchars($siswa['tahun_masuk']); ?>
+            </span>
+            <span class="profile-badge">
+                <i class="bi bi-gender-ambiguous"></i>
+                <?php echo $siswa['jenis_kelamin'] === 'L' ? 'Laki-laki' : 'Perempuan'; ?>
+            </span>
         </div>
     </div>
 
-    <!-- Responsive Tab Navigation (Mobile hidden, using bottom nav instead) -->
-    <div class="mb-3 d-none d-md-block">
-        <ul class="nav nav-pills scroll-pills border p-2 bg-body rounded-4" id="parentTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
-                    <i class="bi bi-grid-fill me-1"></i> Ringkasan
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="spp-tab" data-bs-toggle="tab" data-bs-target="#spp" type="button" role="tab" aria-controls="spp" aria-selected="false">
-                    <i class="bi bi-wallet2 me-1"></i> SPP Bulanan
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades" type="button" role="tab" aria-controls="grades" aria-selected="false">
-                    <i class="bi bi-journal-bookmark-fill me-1"></i> Akademik & Nilai
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab" aria-controls="attendance" aria-selected="false">
-                    <i class="bi bi-calendar-check me-1"></i> Kehadiran
-                </button>
-            </li>
-        </ul>
+    <!-- QUICK STATS -->
+    <div class="stats-row">
+        <!-- Kehadiran -->
+        <?php $rate_color = $rate >= 90 ? '#22c55e' : ($rate >= 75 ? '#f59e0b' : '#ef4444'); ?>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:<?php echo $rate >= 90 ? '#f0fdf4' : ($rate >= 75 ? '#fffbeb' : '#fff1f2'); ?>">
+                <i class="bi bi-calendar-check-fill" style="color:<?php echo $rate_color; ?>"></i>
+            </div>
+            <div class="stat-value" style="color:<?php echo $rate_color; ?>"><?php echo $rate; ?>%</div>
+            <div class="stat-label">Kehadiran</div>
+        </div>
+
+        <!-- Tunggakan SPP -->
+        <div class="stat-card">
+            <div class="stat-icon" style="background:<?php echo $total_tunggakan > 0 ? '#fff1f2' : '#f0fdf4'; ?>">
+                <i class="bi bi-wallet2" style="color:<?php echo $total_tunggakan > 0 ? '#ef4444' : '#22c55e'; ?>"></i>
+            </div>
+            <div class="stat-value" style="color:<?php echo $total_tunggakan > 0 ? '#ef4444' : '#22c55e'; ?>; font-size:13px;">
+                <?php echo $unpaid_months_count > 0 ? $unpaid_months_count . ' Bln' : 'Lunas'; ?>
+            </div>
+            <div class="stat-label">Tunggakan</div>
+        </div>
+
+        <!-- Rata-rata Nilai -->
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#eff6ff;">
+                <i class="bi bi-journal-bookmark-fill" style="color:#3b82f6;"></i>
+            </div>
+            <div class="stat-value" style="color:#3b82f6;"><?php echo $avg_score > 0 ? $avg_score : '-'; ?></div>
+            <div class="stat-label">Rata Nilai</div>
+        </div>
     </div>
 
-    <!-- Tab Contents Wrapper -->
-    <div class="tab-content" id="parentTabContent">
-        
-        <!-- Tab 1: Ringkasan (Overview) -->
-        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-            <div class="row g-4">
-                <!-- Detailed Profile Card -->
-                <div class="col-12 col-lg-7">
-                    <div class="card shadow-sm border-0 rounded-4 p-3 p-md-4 bg-body">
-                        <h5 class="fw-bold mb-3 mb-md-4 text-dark-emphasis" style="font-size: 1.1rem;"><i class="bi bi-person-lines-fill text-primary me-2"></i> Biodata Lengkap Anak</h5>
-                        <div class="row g-3">
-                            <div class="col-6 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Tempat & Tgl Lahir</span>
-                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['tempat_lahir'] . ', ' . date('d-m-Y', strtotime($siswa['tanggal_lahir']))); ?></span>
-                            </div>
-                            <div class="col-6 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Agama</span>
-                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['agama']); ?></span>
-                            </div>
-                            
-                            <div class="col-6 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Nomor HP Siswa</span>
-                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['no_hp']); ?></span>
-                            </div>
-                            <div class="col-6 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Email Siswa</span>
-                                <span class="fw-semibold text-dark-emphasis text-truncate d-block" style="font-size: 13.5px;"><?php echo !empty($siswa['email']) ? htmlspecialchars($siswa['email']) : '-'; ?></span>
-                            </div>
-                            
-                            <div class="col-12">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Alamat Tinggal</span>
-                                <span class="fw-semibold d-block mt-1 p-2 bg-light rounded text-dark-emphasis" style="font-size: 13px;">
-                                    <?php echo nl2br(htmlspecialchars($siswa['alamat'])); ?>
-                                </span>
-                            </div>
-                            
-                            <hr class="my-3">
-                            <h6 class="fw-bold text-dark-emphasis mt-1 mb-2" style="font-size: 0.95rem;"><i class="bi bi-people-fill text-success me-2"></i>Data Orang Tua / Wali</h6>
-                            
-                            <div class="col-6 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Nama Ayah</span>
-                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['nama_ayah']); ?></span>
-                            </div>
-                            <div class="col-6 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">Nama Ibu</span>
-                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['nama_ibu']); ?></span>
-                            </div>
-                            
-                            <div class="col-12 col-sm-6">
-                                <span class="text-muted small d-block" style="font-size: 11px;">No HP Orang Tua</span>
-                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo !empty($siswa['no_hp_ortu']) ? htmlspecialchars($siswa['no_hp_ortu']) : '-'; ?></span>
-                            </div>
-                        </div>
-                    </div>
+    <!-- DESKTOP TAB NAV -->
+    <div class="desktop-tab-nav" id="desktopTabNav">
+        <button class="desktop-tab-btn active" data-tab="overview"><i class="bi bi-grid-fill"></i> Ringkasan</button>
+        <button class="desktop-tab-btn" data-tab="spp"><i class="bi bi-wallet2"></i> SPP Bulanan</button>
+        <button class="desktop-tab-btn" data-tab="grades"><i class="bi bi-journal-bookmark-fill"></i> Akademik & Nilai</button>
+        <button class="desktop-tab-btn" data-tab="attendance"><i class="bi bi-calendar-check"></i> Kehadiran</button>
+    </div>
+
+    <!-- ========================================
+         TAB 1: RINGKASAN (OVERVIEW)
+    ======================================== -->
+    <div class="tab-section active" id="tab-overview">
+
+        <!-- Biodata Anak -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#eff6ff;"><i class="bi bi-person-lines-fill" style="color:#6366f1;font-size:14px;"></i></span>
+                    Biodata Anak
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <div class="info-row">
+                    <span class="info-label">Tempat & Tgl Lahir</span>
+                    <span class="info-value"><?php echo htmlspecialchars($siswa['tempat_lahir'] . ', ' . date('d/m/Y', strtotime($siswa['tanggal_lahir']))); ?></span>
                 </div>
-
-                <!-- Info Box Card / Alerts -->
-                <div class="col-12 col-lg-5">
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body mb-4">
-                        <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-megaphone-fill text-warning me-2"></i> Pengumuman Sekolah</h5>
-                        <div class="p-3 bg-light rounded-3 border">
-                            <span class="badge bg-primary mb-2">Informasi</span>
-                            <p class="small text-muted mb-0" style="line-height: 1.5;">
-                                Untuk mempermudah proses verifikasi pembayaran SPP bulanan, silakan melampirkan bukti transfer dan melakukan konfirmasi ke Bendahara melalui WhatsApp.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body">
-                        <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-telephone-fill text-primary me-2"></i> Kontak Wali Kelas</h5>
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                <i class="bi bi-chat-left-text-fill fs-4"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-dark-emphasis mb-1">Informasi & Konsultasi</h6>
-                                <p class="small text-muted mb-0">Hubungi sekolah untuk konsultasi mengenai perkembangan belajar siswa.</p>
-                            </div>
-                        </div>
-                        <div class="mt-4 border-top pt-3 text-center">
-                            <span class="text-muted small d-block">Nomor Telepon Sekolah:</span>
-                            <span class="fw-bold text-primary fs-5"><?php echo htmlspecialchars($settings['no_telp'] ?? '-'); ?></span>
-                        </div>
-                    </div>
+                <div class="info-row">
+                    <span class="info-label">Agama</span>
+                    <span class="info-value"><?php echo htmlspecialchars($siswa['agama']); ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">No. HP Siswa</span>
+                    <span class="info-value"><?php echo htmlspecialchars($siswa['no_hp']); ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value"><?php echo !empty($siswa['email']) ? htmlspecialchars($siswa['email']) : '-'; ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Alamat</span>
+                    <span class="info-value" style="max-width:60%;"><?php echo nl2br(htmlspecialchars($siswa['alamat'])); ?></span>
                 </div>
             </div>
         </div>
 
-        <!-- Tab 2: Pembayaran SPP -->
-        <div class="tab-pane fade" id="spp" role="tabpanel" aria-labelledby="spp-tab">
-            <div class="row g-4">
-                <!-- SPP Summary and Bank Details -->
-                <div class="col-12 col-lg-5">
-                    <!-- Billing Summary -->
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body mb-4">
-                        <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-calculator-fill text-primary me-2"></i> Ringkasan Tagihan</h5>
-                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
-                            <span class="text-muted">Tarif SPP Bulanan</span>
-                            <span class="fw-semibold text-dark-emphasis">Rp <?php echo number_format($tarif_spp, 0, ',', '.'); ?></span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
-                            <span class="text-muted">Bulan Belum Lunas</span>
-                            <span class="fw-bold text-danger"><?php echo $unpaid_months_count; ?> Bulan</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center pt-2">
-                            <span class="h6 fw-bold m-0 text-dark-emphasis">Total Tunggakan</span>
-                            <span class="h5 fw-bold m-0 text-danger">Rp <?php echo number_format($total_tunggakan, 0, ',', '.'); ?></span>
-                        </div>
-                    </div>
-
-                    <!-- Bank Transfer Details -->
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body">
-                        <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-bank text-success me-2"></i> Info Rekening Sekolah</h5>
-                        <p class="small text-muted mb-4">Pembayaran SPP dapat ditransfer ke rekening bank resmi sekolah berikut:</p>
-                        
-                        <div class="p-3 bg-light rounded-3 border mb-3">
-                            <span class="text-muted small d-block">Nama Bank</span>
-                            <span class="fw-bold text-dark-emphasis fs-6"><?php echo htmlspecialchars($settings['nama_bank'] ?? '-'); ?></span>
-                        </div>
-                        
-                        <div class="p-3 bg-light rounded-3 border mb-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="text-muted small d-block">Nomor Rekening</span>
-                                <span class="fw-bold text-dark-emphasis fs-5 font-monospace" id="rek-num"><?php echo htmlspecialchars($settings['nomor_rekening'] ?? '-'); ?></span>
-                            </div>
-                            <button class="btn btn-outline-primary btn-sm rounded-3" onclick="copyRekening()">
-                                <i class="bi bi-copy"></i> Salin
-                            </button>
-                        </div>
-                        
-                        <div class="p-3 bg-light rounded-3 border">
-                            <span class="text-muted small d-block">Atas Nama</span>
-                            <span class="fw-bold text-dark-emphasis fs-6"><?php echo htmlspecialchars($settings['nama_rekening'] ?? '-'); ?></span>
-                        </div>
-                    </div>
+        <!-- Data Orang Tua -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#f0fdf4;"><i class="bi bi-people-fill" style="color:#22c55e;font-size:14px;"></i></span>
+                    Data Orang Tua / Wali
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <div class="info-row">
+                    <span class="info-label">Nama Ayah</span>
+                    <span class="info-value"><?php echo htmlspecialchars($siswa['nama_ayah']); ?></span>
                 </div>
-
-                <!-- 12 Months SPP Timeline/List -->
-                <div class="col-12 col-lg-7">
-                    <div class="card shadow-sm border-0 rounded-4 p-3 p-md-4 bg-body">
-                        <h5 class="fw-bold mb-2 mb-md-3 text-dark-emphasis"><i class="bi bi-calendar-range text-primary me-2"></i> Status SPP 12 Bulan Terakhir</h5>
-                        <p class="small text-muted mb-3">Daftar tagihan dan pembayaran SPP Anda dalam rentang 12 bulan terakhir:</p>
-                        
-                        <!-- Desktop View Table -->
-                        <div class="table-responsive d-none d-md-block">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Periode Bulan</th>
-                                        <th>Tagihan</th>
-                                        <th>Status</th>
-                                        <th class="text-end">Aksi/Detail</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($months_billing as $mb): 
-                                        $key = $mb['tahun'] . '-' . $mb['bulan'];
-                                        $is_paid = isset($payment_map[$key]) && $payment_map[$key]['status_bayar'] === 'Lunas';
-                                    ?>
-                                        <tr>
-                                            <td class="fw-semibold text-dark-emphasis">
-                                                <?php echo $month_names[$mb['bulan']] . ' ' . $mb['tahun']; ?>
-                                            </td>
-                                            <td class="fw-bold text-primary">
-                                                Rp <?php echo number_format($tarif_spp, 0, ',', '.'); ?>
-                                            </td>
-                                            <td>
-                                                <?php if ($is_paid): ?>
-                                                    <span class="badge bg-success-subtle text-success-emphasis"><i class="bi bi-check-circle-fill me-1"></i> Lunas</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-x-circle-fill me-1"></i> Belum Bayar</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="text-end">
-                                                <?php if ($is_paid): ?>
-                                                    <a href="../spp/invoice.php?token=<?php echo htmlspecialchars($payment_map[$key]['invoice_token']); ?>" target="_blank" class="btn btn-sm btn-outline-secondary rounded-3">
-                                                        <i class="bi bi-receipt"></i> Kuitansi
-                                                    </a>
-                                                <?php else: ?>
-                                                    <span class="text-muted small">Silakan Transfer</span>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Mobile View Cards -->
-                        <div class="d-block d-md-none">
-                            <?php foreach ($months_billing as $mb): 
-                                $key = $mb['tahun'] . '-' . $mb['bulan'];
-                                $is_paid = isset($payment_map[$key]) && $payment_map[$key]['status_bayar'] === 'Lunas';
-                            ?>
-                                <div class="mobile-card">
-                                    <div class="mobile-card-header">
-                                        <span class="mobile-card-title"><?php echo $month_names[$mb['bulan']] . ' ' . $mb['tahun']; ?></span>
-                                        <?php if ($is_paid): ?>
-                                            <span class="badge bg-success-subtle text-success-emphasis"><i class="bi bi-check-circle-fill me-1"></i> Lunas</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-x-circle-fill me-1"></i> Belum Lunas</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <div>
-                                            <span class="text-muted small d-block" style="font-size: 11px;">Tagihan SPP</span>
-                                            <span class="fw-bold text-primary" style="font-size: 1.1rem;">Rp <?php echo number_format($tarif_spp, 0, ',', '.'); ?></span>
-                                        </div>
-                                        <div>
-                                            <?php if ($is_paid): ?>
-                                                <a href="../spp/invoice.php?token=<?php echo htmlspecialchars($payment_map[$key]['invoice_token']); ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                                    <i class="bi bi-receipt"></i> Kuitansi
-                                                </a>
-                                            <?php else: ?>
-                                                <button class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="showBankDetailsMobile()">
-                                                    <i class="bi bi-bank"></i> Bayar
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
+                <div class="info-row">
+                    <span class="info-label">Nama Ibu</span>
+                    <span class="info-value"><?php echo htmlspecialchars($siswa['nama_ibu']); ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">No. HP Orang Tua</span>
+                    <span class="info-value"><?php echo !empty($siswa['no_hp_ortu']) ? htmlspecialchars($siswa['no_hp_ortu']) : '-'; ?></span>
                 </div>
             </div>
         </div>
 
-        <!-- Tab 3: Akademik & Nilai -->
-        <div class="tab-pane fade" id="grades" role="tabpanel" aria-labelledby="grades-tab">
-            <div class="card shadow-sm border-0 rounded-4 p-4 bg-body">
-                <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-journal-bookmark-fill text-success me-2"></i> Hasil Belajar Rapor</h5>
-                
-                <?php 
-                // Group grades by Academic Year & Semester
-                $grouped_grades = [];
-                foreach ($grades as $grade) {
-                    $group_key = $grade['tahun_ajaran'] . ' - ' . $grade['semester'];
-                    $grouped_grades[$group_key][] = $grade;
-                }
-                
-                if (empty($grouped_grades)): 
+        <!-- Pengumuman & Kontak Sekolah -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#fffbeb;"><i class="bi bi-megaphone-fill" style="color:#f59e0b;font-size:14px;"></i></span>
+                    Pengumuman & Kontak
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <div class="announcement-card">
+                    <div class="announcement-title">
+                        <i class="bi bi-info-circle-fill"></i> Informasi Pembayaran SPP
+                    </div>
+                    <p class="announcement-text">
+                        Untuk mempermudah verifikasi pembayaran SPP bulanan, silakan lampirkan bukti transfer dan konfirmasi ke Bendahara melalui WhatsApp.
+                    </p>
+                </div>
+                <div style="text-align:center; padding:10px 0 4px;">
+                    <p style="font-size:12px; color:#94a3b8; margin-bottom:8px;">Nomor Telepon Sekolah</p>
+                    <div class="contact-number"><?php echo htmlspecialchars($settings['no_telp'] ?? '-'); ?></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========================================
+         TAB 2: SPP BULANAN
+    ======================================== -->
+    <div class="tab-section" id="tab-spp">
+
+        <!-- Ringkasan Tagihan -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#f0fdf4;"><i class="bi bi-calculator-fill" style="color:#22c55e;font-size:14px;"></i></span>
+                    Ringkasan Tagihan
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <div class="billing-row">
+                    <span class="billing-label">Tarif SPP Bulanan</span>
+                    <span class="billing-value">Rp <?php echo number_format($tarif_spp, 0, ',', '.'); ?></span>
+                </div>
+                <div class="billing-row">
+                    <span class="billing-label">Bulan Belum Lunas</span>
+                    <span class="billing-value" style="color:#ef4444;"><?php echo $unpaid_months_count; ?> Bulan</span>
+                </div>
+                <div class="billing-total-row">
+                    <span class="billing-total-label"><i class="bi bi-exclamation-triangle-fill me-1"></i>Total Tunggakan</span>
+                    <span class="billing-total-value">Rp <?php echo number_format($total_tunggakan, 0, ',', '.'); ?></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Rekening Sekolah -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#f0fdf4;"><i class="bi bi-bank" style="color:#059669;font-size:14px;"></i></span>
+                    Info Rekening Sekolah
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <div class="bank-info-box">
+                    <p style="font-size:11px; color:#065f46; margin-bottom:4px; font-weight:600;"><?php echo htmlspecialchars($settings['nama_bank'] ?? '-'); ?></p>
+                    <div class="bank-rek-number"><?php echo htmlspecialchars($settings['nomor_rekening'] ?? '-'); ?></div>
+                    <p style="font-size:11px; color:#065f46; margin:4px 0 10px; font-weight:500;">a.n. <?php echo htmlspecialchars($settings['nama_rekening'] ?? '-'); ?></p>
+                    <button class="btn-copy" onclick="copyRekening()" id="copyRekBtn">
+                        <i class="bi bi-copy"></i> Salin Nomor Rekening
+                    </button>
+                </div>
+                <p style="font-size:11.5px; color:#94a3b8; text-align:center; margin:4px 0 0;">Setelah transfer, harap konfirmasi ke pihak sekolah.</p>
+            </div>
+        </div>
+
+        <!-- Status SPP 12 Bulan Terakhir -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#eff6ff;"><i class="bi bi-calendar-range" style="color:#6366f1;font-size:14px;"></i></span>
+                    Status SPP 12 Bulan Terakhir
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <?php foreach ($months_billing as $mb): 
+                    $key = $mb['tahun'] . '-' . $mb['bulan'];
+                    $is_paid = isset($payment_map[$key]) && $payment_map[$key]['status_bayar'] === 'Lunas';
                 ?>
-                    <div class="text-center py-5 text-muted border border-dashed rounded-4">
-                        <i class="bi bi-journal-x fs-1 text-secondary"></i>
-                        <p class="mt-2 mb-0">Belum ada catatan nilai rapor terdaftar untuk siswa ini.</p>
+                <div class="spp-item">
+                    <div class="spp-month-icon <?php echo $is_paid ? 'paid' : 'unpaid'; ?>">
+                        <span class="spp-month-name"><?php echo $month_names[$mb['bulan']]; ?></span>
+                        <span class="spp-month-year"><?php echo $mb['tahun']; ?></span>
+                    </div>
+                    <div class="spp-info">
+                        <p class="spp-period"><?php echo $month_names_full[$mb['bulan']] . ' ' . $mb['tahun']; ?></p>
+                        <p class="spp-amount">Rp <?php echo number_format($tarif_spp, 0, ',', '.'); ?></p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                        <span class="badge-pill <?php echo $is_paid ? 'badge-paid' : 'badge-unpaid'; ?>">
+                            <i class="bi <?php echo $is_paid ? 'bi-check-circle-fill' : 'bi-clock-fill'; ?>"></i>
+                            <?php echo $is_paid ? 'Lunas' : 'Belum'; ?>
+                        </span>
+                        <?php if ($is_paid): ?>
+                            <a href="../spp/invoice.php?token=<?php echo htmlspecialchars($payment_map[$key]['invoice_token']); ?>" target="_blank" class="btn-receipt">
+                                <i class="bi bi-receipt"></i>
+                            </a>
+                        <?php else: ?>
+                            <button class="btn-pay" onclick="scrollToBankInfo()">
+                                <i class="bi bi-bank"></i>
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========================================
+         TAB 3: AKADEMIK & NILAI
+    ======================================== -->
+    <div class="tab-section" id="tab-grades">
+        <?php 
+        $grouped_grades = [];
+        foreach ($grades as $grade) {
+            $group_key = $grade['tahun_ajaran'] . ' — Semester ' . $grade['semester'];
+            $grouped_grades[$group_key][] = $grade;
+        }
+        
+        if (empty($grouped_grades)): ?>
+            <div class="section-card">
+                <div class="section-card-body">
+                    <div class="empty-state">
+                        <i class="bi bi-journal-x"></i>
+                        <p>Belum ada catatan nilai rapor yang diinput untuk siswa ini.</p>
+                    </div>
+                </div>
+            </div>
+        <?php else: ?>
+            <?php foreach ($grouped_grades as $semester_name => $semester_grades): 
+                $sem_sum = 0;
+                foreach ($semester_grades as $sg) $sem_sum += (float)$sg['nilai_akhir'];
+                $sem_avg = round($sem_sum / count($semester_grades), 1);
+            ?>
+            <div class="section-card">
+                <div class="section-card-header">
+                    <h2 class="section-card-title" style="font-size:12.5px;">
+                        <span class="section-icon" style="background:#eff6ff;"><i class="bi bi-calendar3" style="color:#6366f1;font-size:13px;"></i></span>
+                        <?php echo htmlspecialchars($semester_name); ?>
+                    </h2>
+                    <span class="semester-avg">Rata-rata: <?php echo $sem_avg; ?></span>
+                </div>
+                <div class="section-card-body">
+                    <?php foreach ($semester_grades as $grade):
+                        $final = (float)$grade['nilai_akhir'];
+                        if ($final >= 85)      { $g_class = 'grade-A'; $predikat = 'A'; }
+                        elseif ($final >= 75)  { $g_class = 'grade-B'; $predikat = 'B'; }
+                        elseif ($final >= 60)  { $g_class = 'grade-C'; $predikat = 'C'; }
+                        else                   { $g_class = 'grade-D'; $predikat = 'D'; }
+                    ?>
+                    <div class="grade-item">
+                        <div style="flex:1; min-width:0;">
+                            <p class="grade-subject"><?php echo htmlspecialchars($grade['mata_pelajaran']); ?></p>
+                            <p style="font-size:10.5px; color:#94a3b8; margin:2px 0 0;">
+                                Tugas: <?php echo number_format($grade['nilai_tugas'],1); ?> &bull;
+                                UTS: <?php echo number_format($grade['nilai_uts'],1); ?> &bull;
+                                UAS: <?php echo number_format($grade['nilai_uas'],1); ?>
+                            </p>
+                            <?php if (!empty($grade['keterangan'])): ?>
+                                <p style="font-size:10.5px; color:#94a3b8; margin:3px 0 0; font-style:italic;">"<?php echo htmlspecialchars($grade['keterangan']); ?>"</p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="grade-score-box <?php echo $g_class; ?>">
+                            <?php echo number_format($grade['nilai_akhir'],1); ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+
+    <!-- ========================================
+         TAB 4: KEHADIRAN
+    ======================================== -->
+    <div class="tab-section" id="tab-attendance">
+
+        <!-- Rekapitulasi Kehadiran -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#fffbeb;"><i class="bi bi-pie-chart-fill" style="color:#f59e0b;font-size:14px;"></i></span>
+                    Rekapitulasi Kehadiran
+                </h2>
+            </div>
+            <div class="section-card-body">
+                <!-- Rate Ring Visual -->
+                <div class="rate-ring-wrapper">
+                    <svg class="rate-ring-svg" width="70" height="70" viewBox="0 0 70 70">
+                        <circle cx="35" cy="35" r="28" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                        <circle cx="35" cy="35" r="28" fill="none" 
+                                stroke="<?php echo $rate >= 90 ? '#22c55e' : ($rate >= 75 ? '#f59e0b' : '#ef4444'); ?>" 
+                                stroke-width="8" stroke-linecap="round"
+                                stroke-dasharray="<?php echo round(175.9 * $rate / 100); ?> 175.9"
+                                transform="rotate(-90 35 35)"/>
+                        <text x="35" y="40" text-anchor="middle" font-size="14" font-weight="800" 
+                              fill="<?php echo $rate >= 90 ? '#22c55e' : ($rate >= 75 ? '#f59e0b' : '#ef4444'); ?>">
+                            <?php echo $rate; ?>%
+                        </text>
+                    </svg>
+                    <div class="rate-ring-info">
+                        <h3 style="color:<?php echo $rate >= 90 ? '#22c55e' : ($rate >= 75 ? '#f59e0b' : '#ef4444'); ?>">
+                            <?php echo $rate >= 90 ? 'Sangat Baik' : ($rate >= 75 ? 'Perlu Ditingkatkan' : 'Perhatian!'); ?>
+                        </h3>
+                        <p><?php echo $att_summary['Hadir']; ?> hari hadir dari <?php echo $total_att_days; ?> hari total</p>
+                    </div>
+                </div>
+                <!-- Recap Grid -->
+                <div class="recap-grid">
+                    <div class="recap-cell recap-cell-hadir">
+                        <div class="recap-num recap-num-hadir"><?php echo $att_summary['Hadir']; ?></div>
+                        <div class="recap-label">Hadir</div>
+                    </div>
+                    <div class="recap-cell recap-cell-sakit">
+                        <div class="recap-num recap-num-sakit"><?php echo $att_summary['Sakit']; ?></div>
+                        <div class="recap-label">Sakit</div>
+                    </div>
+                    <div class="recap-cell recap-cell-izin">
+                        <div class="recap-num recap-num-izin"><?php echo $att_summary['Izin']; ?></div>
+                        <div class="recap-label">Izin</div>
+                    </div>
+                    <div class="recap-cell recap-cell-alpa">
+                        <div class="recap-num recap-num-alpa"><?php echo $att_summary['Alpa']; ?></div>
+                        <div class="recap-label">Alpa</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Kehadiran -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <h2 class="section-card-title">
+                    <span class="section-icon" style="background:#eff6ff;"><i class="bi bi-clock-history" style="color:#6366f1;font-size:14px;"></i></span>
+                    Catatan Absensi Terakhir
+                </h2>
+                <span style="font-size:11px; color:#94a3b8; font-weight:500;">15 log terakhir</span>
+            </div>
+            <div class="section-card-body scrollable-list">
+                <?php if (empty($att_logs)): ?>
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <p>Belum ada data presensi siswa yang dicatat oleh guru.</p>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($grouped_grades as $semester_name => $semester_grades): ?>
-                        <div class="mb-5">
-                            <h6 class="fw-bold text-primary mb-3 pb-2 border-bottom d-flex justify-content-between align-items-center" style="font-size: 15px;">
-                                <span><i class="bi bi-calendar3 me-2"></i> Tahun Ajaran <?php echo htmlspecialchars($semester_name); ?></span>
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace">
-                                    Rata-rata: <?php 
-                                    $sum = 0;
-                                    foreach ($semester_grades as $sg) $sum += (float)$sg['nilai_akhir'];
-                                    echo number_format($sum / count($semester_grades), 1);
-                                    ?>
-                                </span>
-                            </h6>
-                            
-                            <!-- Desktop View Table -->
-                            <div class="table-responsive d-none d-md-block">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="width: 50px;">No</th>
-                                            <th>Mata Pelajaran</th>
-                                            <th>Tugas (30%)</th>
-                                            <th>UTS (30%)</th>
-                                            <th>UAS (40%)</th>
-                                            <th>Nilai Akhir</th>
-                                            <th>Predikat</th>
-                                            <th>Keterangan / Feedback Guru</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        $no = 1;
-                                        foreach ($semester_grades as $grade):
-                                            $final = (float)$grade['nilai_akhir'];
-                                            if ($final >= 85) {
-                                                $badge_class = 'bg-success-subtle text-success';
-                                                $predikat = 'A (Sangat Baik)';
-                                            } elseif ($final >= 75) {
-                                                $badge_class = 'bg-primary-subtle text-primary';
-                                                $predikat = 'B (Baik)';
-                                            } elseif ($final >= 60) {
-                                                $badge_class = 'bg-warning-subtle text-warning';
-                                                $predikat = 'C (Cukup)';
-                                            } else {
-                                                $badge_class = 'bg-danger-subtle text-danger';
-                                                $predikat = 'D (Kurang)';
-                                            }
-                                        ?>
-                                            <tr>
-                                                <td><?php echo $no++; ?></td>
-                                                <td class="fw-bold text-dark-emphasis"><?php echo htmlspecialchars($grade['mata_pelajaran']); ?></td>
-                                                <td><?php echo number_format($grade['nilai_tugas'], 1); ?></td>
-                                                <td><?php echo number_format($grade['nilai_uts'], 1); ?></td>
-                                                <td><?php echo number_format($grade['nilai_uas'], 1); ?></td>
-                                                <td>
-                                                    <span class="badge <?php echo $badge_class; ?> font-monospace px-3 py-1" style="font-size: 13px;">
-                                                        <?php echo number_format($grade['nilai_akhir'], 1); ?>
-                                                    </span>
-                                                </td>
-                                                <td><span class="small fw-semibold"><?php echo $predikat; ?></span></td>
-                                                <td class="small text-muted text-wrap" style="max-width: 250px;">
-                                                    <?php echo !empty($grade['keterangan']) ? htmlspecialchars($grade['keterangan']) : '-'; ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- Mobile View Cards -->
-                            <div class="d-block d-md-none">
-                                <?php foreach ($semester_grades as $grade):
-                                    $final = (float)$grade['nilai_akhir'];
-                                    if ($final >= 85) {
-                                        $badge_class = 'bg-success-subtle text-success';
-                                        $predikat = 'A';
-                                    } elseif ($final >= 75) {
-                                        $badge_class = 'bg-primary-subtle text-primary';
-                                        $predikat = 'B';
-                                    } elseif ($final >= 60) {
-                                        $badge_class = 'bg-warning-subtle text-warning';
-                                        $predikat = 'C';
-                                    } else {
-                                        $badge_class = 'bg-danger-subtle text-danger';
-                                        $predikat = 'D';
-                                    }
-                                ?>
-                                    <div class="mobile-card">
-                                        <div class="mobile-card-header mb-2">
-                                            <span class="mobile-card-title fw-bold text-dark-emphasis"><?php echo htmlspecialchars($grade['mata_pelajaran']); ?></span>
-                                            <span class="badge <?php echo $badge_class; ?> font-monospace px-2.5 py-1" style="font-size: 12px;">
-                                                <?php echo number_format($grade['nilai_akhir'], 1); ?> (<?php echo $predikat; ?>)
-                                            </span>
-                                        </div>
-                                        
-                                        <div class="mobile-grid-grades">
-                                            <div class="mobile-grid-item">
-                                                <div>Tugas (30%)</div>
-                                                <div class="mobile-grid-value"><?php echo number_format($grade['nilai_tugas'], 1); ?></div>
-                                            </div>
-                                            <div class="mobile-grid-item border-start border-end border-opacity-10">
-                                                <div>UTS (30%)</div>
-                                                <div class="mobile-grid-value"><?php echo number_format($grade['nilai_uts'], 1); ?></div>
-                                            </div>
-                                            <div class="mobile-grid-item">
-                                                <div>UAS (40%)</div>
-                                                <div class="mobile-grid-value"><?php echo number_format($grade['nilai_uas'], 1); ?></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <?php if (!empty($grade['keterangan'])): ?>
-                                            <div class="mt-2 p-2 bg-light rounded-3 border-0">
-                                                <span class="text-muted d-block mb-1" style="font-size: 9px; font-weight: 700; text-transform: uppercase;">Feedback Guru:</span>
-                                                <p class="mb-0 text-muted" style="font-size: 11.5px; line-height: 1.4;"><?php echo htmlspecialchars($grade['keterangan']); ?></p>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
+                    <?php 
+                    $day_names = [
+                        'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 
+                        'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'
+                    ];
+                    foreach ($att_logs as $log):
+                        $day_en = date('l', strtotime($log['tanggal']));
+                        $day_id = $day_names[$day_en] ?? $day_en;
+                        $formatted_date = $day_id . ', ' . date('d M Y', strtotime($log['tanggal']));
+                        
+                        $dot_class = 'att-dot-hadir';
+                        $status_color = '#22c55e';
+                        if ($log['status'] === 'Sakit')  { $dot_class = 'att-dot-sakit'; $status_color = '#3b82f6'; }
+                        elseif ($log['status'] === 'Izin')  { $dot_class = 'att-dot-izin'; $status_color = '#f59e0b'; }
+                        elseif ($log['status'] === 'Alpa')  { $dot_class = 'att-dot-alpa'; $status_color = '#ef4444'; }
+                    ?>
+                    <div class="att-item">
+                        <div class="att-dot <?php echo $dot_class; ?>"></div>
+                        <div style="flex:1; min-width:0;">
+                            <div class="att-date"><?php echo $formatted_date; ?></div>
+                            <?php if (!empty($log['keterangan'])): ?>
+                                <p class="att-note"><?php echo htmlspecialchars($log['keterangan']); ?></p>
+                            <?php endif; ?>
                         </div>
+                        <span style="font-size:12px; font-weight:700; color:<?php echo $status_color; ?>; flex-shrink:0;">
+                            <?php echo htmlspecialchars($log['status']); ?>
+                        </span>
+                    </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
         </div>
 
-        <!-- Tab 4: Kehadiran (Presensi) -->
-        <div class="tab-pane fade" id="attendance" role="tabpanel" aria-labelledby="attendance-tab">
-            <div class="row g-4">
-                <!-- Attendance Stats Widget -->
-                <div class="col-12 col-md-5 col-lg-4">
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body text-center">
-                        <h5 class="fw-bold mb-4 text-dark-emphasis text-start"><i class="bi bi-pie-chart-fill text-warning me-2"></i> Rekapitulasi</h5>
-                        
-                        <!-- Circular Rate Display -->
-                        <div class="d-inline-flex align-items-center justify-content-center border border-5 <?php echo $rate < 90 ? 'border-warning' : 'border-success'; ?> rounded-circle mb-4 mx-auto" style="width: 130px; height: 130px;">
-                            <div>
-                                <h2 class="fw-bold m-0 <?php echo $rate < 90 ? 'text-warning' : 'text-success'; ?>"><?php echo $rate; ?>%</h2>
-                                <span class="text-muted small" style="font-size: 10px;">Hadir</span>
-                            </div>
-                        </div>
-
-                        <!-- Mini stats grid -->
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <div class="p-2 border rounded bg-success-subtle text-success-emphasis text-center">
-                                    <span class="d-block small text-muted">Hadir</span>
-                                    <h4 class="fw-bold m-0 mt-1"><?php echo $att_summary['Hadir']; ?></h4>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="p-2 border rounded bg-primary-subtle text-primary-emphasis text-center">
-                                    <span class="d-block small text-muted">Sakit</span>
-                                    <h4 class="fw-bold m-0 mt-1"><?php echo $att_summary['Sakit']; ?></h4>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="p-2 border rounded bg-warning-subtle text-warning-emphasis text-center">
-                                    <span class="d-block small text-muted">Izin</span>
-                                    <h4 class="fw-bold m-0 mt-1"><?php echo $att_summary['Izin']; ?></h4>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="p-2 border rounded bg-danger-subtle text-danger-emphasis text-center">
-                                    <span class="d-block small text-muted">Alpa</span>
-                                    <h4 class="fw-bold m-0 mt-1"><?php echo $att_summary['Alpa']; ?></h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Absences & Attendance Logs -->
-                <div class="col-12 col-md-7 col-lg-8">
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body">
-                        <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-clock-history text-primary me-2"></i> Catatan Absensi Terakhir</h5>
-                        <p class="small text-muted">Daftar riwayat kehadiran harian anak Anda (Hingga 15 log terakhir):</p>
-                        
-                        <?php if (empty($att_logs)): ?>
-                            <div class="text-center py-5 text-muted border border-dashed rounded-4">
-                                <i class="bi bi-calendar-x fs-2 text-secondary"></i>
-                                <p class="mt-2 mb-0">Belum ada data presensi siswa yang dicatatkan oleh guru.</p>
-                            </div>
-                        <?php else: ?>
-                            <!-- Desktop View Table -->
-                            <div class="table-responsive d-none d-md-block" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="table-light sticky-top">
-                                        <tr>
-                                            <th>Hari & Tanggal</th>
-                                            <th>Status</th>
-                                            <th>Keterangan</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        $day_names = [
-                                            'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 
-                                            'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'
-                                        ];
-                                        foreach ($att_logs as $log):
-                                            $day_en = date('l', strtotime($log['tanggal']));
-                                            $day_id = $day_names[$day_en] ?? $day_en;
-                                            $formatted_date = $day_id . ', ' . date('d-m-Y', strtotime($log['tanggal']));
-                                            
-                                            $badge_class = 'bg-secondary';
-                                            if ($log['status'] === 'Hadir') $badge_class = 'bg-success-subtle text-success-emphasis';
-                                            elseif ($log['status'] === 'Sakit') $badge_class = 'bg-primary-subtle text-primary-emphasis';
-                                            elseif ($log['status'] === 'Izin') $badge_class = 'bg-warning-subtle text-warning-emphasis';
-                                            elseif ($log['status'] === 'Alpa') $badge_class = 'bg-danger-subtle text-danger-emphasis';
-                                        ?>
-                                            <tr>
-                                                <td class="fw-semibold text-dark-emphasis"><?php echo $formatted_date; ?></td>
-                                                <td>
-                                                    <span class="badge <?php echo $badge_class; ?>"><?php echo htmlspecialchars($log['status']); ?></span>
-                                                </td>
-                                                <td class="small text-muted">
-                                                    <?php echo !empty($log['keterangan']) ? htmlspecialchars($log['keterangan']) : '-'; ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- Mobile View List -->
-                            <div class="d-block d-md-none" style="max-height: 400px; overflow-y: auto; padding-right: 2px;">
-                                <?php 
-                                $day_names = [
-                                    'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 
-                                    'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'
-                                ];
-                                foreach ($att_logs as $log):
-                                    $day_en = date('l', strtotime($log['tanggal']));
-                                    $day_id = $day_names[$day_en] ?? $day_en;
-                                    $formatted_date = $day_id . ', ' . date('d-m-Y', strtotime($log['tanggal']));
-                                    
-                                    $badge_class = 'bg-secondary';
-                                    $icon_class = 'bi-circle';
-                                    if ($log['status'] === 'Hadir') {
-                                        $badge_class = 'bg-success-subtle text-success-emphasis';
-                                        $icon_class = 'bi-check-circle-fill text-success';
-                                    } elseif ($log['status'] === 'Sakit') {
-                                        $badge_class = 'bg-primary-subtle text-primary-emphasis';
-                                        $icon_class = 'bi-info-circle-fill text-primary';
-                                    } elseif ($log['status'] === 'Izin') {
-                                        $badge_class = 'bg-warning-subtle text-warning-emphasis';
-                                        $icon_class = 'bi-exclamation-circle-fill text-warning';
-                                    } elseif ($log['status'] === 'Alpa') {
-                                        $badge_class = 'bg-danger-subtle text-danger-emphasis';
-                                        $icon_class = 'bi-x-circle-fill text-danger';
-                                    }
-                                ?>
-                                    <div class="d-flex align-items-center justify-content-between p-3 border-bottom bg-body">
-                                        <div class="d-flex align-items-center gap-2" style="min-width: 0;">
-                                            <i class="bi <?php echo $icon_class; ?> fs-5 flex-shrink-0"></i>
-                                            <div style="min-width: 0;">
-                                                <span class="fw-semibold text-dark-emphasis d-block" style="font-size: 13.5px;"><?php echo $formatted_date; ?></span>
-                                                <?php if (!empty($log['keterangan'])): ?>
-                                                    <span class="text-muted d-block text-truncate" style="font-size: 11px;"><?php echo htmlspecialchars($log['keterangan']); ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                        <span class="badge <?php echo $badge_class; ?> rounded-pill px-2.5 flex-shrink-0"><?php echo htmlspecialchars($log['status']); ?></span>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 
-    <!-- Footer Copyright -->
-    <footer class="mt-5 py-4 border-top text-center text-muted small">
-        <p class="m-0">&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?>. Semua Hak Cipta Dilindungi.</p>
-        <p class="m-0 text-muted" style="font-size: 10px;">Diproses oleh Nginx & PHP-FPM - Stabil untuk RAM 4GB</p>
+    <!-- Footer -->
+    <footer style="text-align:center; padding:20px 0 10px; color:#94a3b8;">
+        <p style="font-size:11px; margin:0;">&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?>. Semua Hak Cipta Dilindungi.</p>
     </footer>
-</div>
 
-<!-- Bottom Navigation Bar for Mobile -->
-<div class="bottom-nav-bar d-md-none">
-    <button type="button" class="bottom-nav-item active" data-tab-id="overview-tab">
+</div><!-- end page-container -->
+
+<!-- ============================
+     BOTTOM NAV BAR (MOBILE)
+============================ -->
+<nav class="bottom-nav" id="bottomNav">
+    <button class="bottom-nav-btn active" data-tab="overview">
         <i class="bi bi-grid-fill"></i>
         <span>Ringkasan</span>
     </button>
-    <button type="button" class="bottom-nav-item" data-tab-id="spp-tab">
+    <button class="bottom-nav-btn" data-tab="spp">
         <i class="bi bi-wallet2"></i>
         <span>SPP</span>
     </button>
-    <button type="button" class="bottom-nav-item" data-tab-id="grades-tab">
+    <button class="bottom-nav-btn" data-tab="grades">
         <i class="bi bi-journal-bookmark-fill"></i>
-        <span>Nilai Rapor</span>
+        <span>Nilai</span>
     </button>
-    <button type="button" class="bottom-nav-item" data-tab-id="attendance-tab">
+    <button class="bottom-nav-btn" data-tab="attendance">
         <i class="bi bi-calendar-check"></i>
-        <span>Kehadiran</span>
+        <span>Absensi</span>
     </button>
-</div>
+</nav>
 
 <!-- Bootstrap 5 JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Dark Mode Toggle Script -->
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const htmlElement = document.documentElement;
-        const themeToggle = document.getElementById('theme-toggle');
-        
-        // Cek LocalStorage
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-            htmlElement.setAttribute('data-bs-theme', 'dark');
-            if (themeToggle) themeToggle.checked = true;
-        } else {
-            htmlElement.setAttribute('data-bs-theme', 'light');
-            if (themeToggle) themeToggle.checked = false;
-        }
-        
-        if (themeToggle) {
-            themeToggle.addEventListener('change', () => {
-                if (themeToggle.checked) {
-                    htmlElement.setAttribute('data-bs-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    htmlElement.setAttribute('data-bs-theme', 'light');
-                    localStorage.setItem('theme', 'light');
-                }
-            });
-        }
+    // =============================
+    // THEME TOGGLE
+    // =============================
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('themeToggleBtn');
+    const iconSun  = document.getElementById('iconSun');
+    const iconMoon = document.getElementById('iconMoon');
 
-        // Link bottom nav items with standard bootstrap tabs
-        const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
-        bottomNavItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const tabId = item.getAttribute('data-tab-id');
-                const tabButton = document.getElementById(tabId);
-                if (tabButton) {
-                    // Trigger bootstrap tab show
-                    const tab = new bootstrap.Tab(tabButton);
-                    tab.show();
-                }
-            });
-        });
+    function setTheme(dark) {
+        html.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+        iconSun.classList.toggle('d-none', dark);
+        iconMoon.classList.toggle('d-none', !dark);
+    }
 
-        // Sync bottom nav active class when tabs change
-        const tabButtons = document.querySelectorAll('#parentTab button');
-        tabButtons.forEach(btn => {
-            btn.addEventListener('shown.bs.tab', (e) => {
-                const activeTabId = e.target.id;
-                bottomNavItems.forEach(item => {
-                    if (item.getAttribute('data-tab-id') === activeTabId) {
-                        item.classList.add('active');
-                    } else {
-                        item.classList.remove('active');
-                    }
-                });
-            });
-        });
+    const saved = localStorage.getItem('theme');
+    const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(saved === 'dark' || (!saved && sysDark));
+
+    themeBtn.addEventListener('click', () => {
+        setTheme(html.getAttribute('data-bs-theme') !== 'dark');
     });
 
-    // Fungsi salin nomor rekening ke clipboard
+    // =============================
+    // TAB NAVIGATION
+    // =============================
+    const tabSections    = document.querySelectorAll('.tab-section');
+    const bottomNavBtns  = document.querySelectorAll('.bottom-nav-btn');
+    const desktopTabBtns = document.querySelectorAll('.desktop-tab-btn');
+
+    function activateTab(tabId) {
+        // Hide all sections
+        tabSections.forEach(s => s.classList.remove('active'));
+        bottomNavBtns.forEach(b => b.classList.remove('active'));
+        desktopTabBtns.forEach(b => b.classList.remove('active'));
+
+        // Show target section
+        const section = document.getElementById('tab-' + tabId);
+        if (section) section.classList.add('active');
+
+        // Update bottom nav
+        bottomNavBtns.forEach(b => {
+            if (b.getAttribute('data-tab') === tabId) b.classList.add('active');
+        });
+
+        // Update desktop tab
+        desktopTabBtns.forEach(b => {
+            if (b.getAttribute('data-tab') === tabId) b.classList.add('active');
+        });
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    bottomNavBtns.forEach(btn => {
+        btn.addEventListener('click', () => activateTab(btn.getAttribute('data-tab')));
+    });
+
+    desktopTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => activateTab(btn.getAttribute('data-tab')));
+    });
+
+    // =============================
+    // COPY REKENING
+    // =============================
     function copyRekening() {
-        const rekNumText = document.getElementById('rek-num').innerText;
-        navigator.clipboard.writeText(rekNumText).then(() => {
-            alert('Nomor Rekening berhasil disalin: ' + rekNumText);
-        }).catch(err => {
-            console.error('Gagal menyalin rekening: ', err);
+        const rekText = '<?php echo addslashes(htmlspecialchars($settings['nomor_rekening'] ?? '')); ?>';
+        navigator.clipboard.writeText(rekText).then(() => {
+            const toast = document.getElementById('copyToast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }).catch(() => {
+            alert('Nomor Rekening: ' + rekText);
         });
     }
 
-    // Fungsi scroll otomatis ke detail bank di HP
-    function showBankDetailsMobile() {
-        const bankCard = document.querySelector('.bi-bank').closest('.card');
-        if (bankCard) {
-            bankCard.scrollIntoView({ behavior: 'smooth' });
-            bankCard.style.outline = '2px solid var(--primary-color)';
-            bankCard.style.transition = 'outline 0.3s ease';
-            setTimeout(() => {
-                bankCard.style.outline = '2px solid transparent';
-            }, 2000);
-        }
+    // =============================
+    // SCROLL TO BANK INFO
+    // =============================
+    function scrollToBankInfo() {
+        activateTab('spp');
+        setTimeout(() => {
+            const bankEl = document.querySelector('.bank-info-box');
+            if (bankEl) bankEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
     }
 </script>
 </body>
