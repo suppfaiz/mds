@@ -190,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="username" class="form-label small fw-semibold">Username</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autofocus autocomplete="username">
+                                <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autofocus autocomplete="username" disabled>
                             </div>
                         </div>
                         
@@ -198,8 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="password" class="form-label small fw-semibold">Password</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-lock"></i></span>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required autocomplete="current-password">
-                                <button class="btn btn-outline-secondary" type="button" id="togglePass" tabindex="-1">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required autocomplete="current-password" disabled>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePass" tabindex="-1" disabled>
                                     <i class="bi bi-eye" id="eyeIcon"></i>
                                 </button>
                             </div>
@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="role" class="form-label small fw-semibold">Hak Akses</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-shield-lock"></i></span>
-                                <select class="form-select" id="role" name="role" required>
+                                <select class="form-select" id="role" name="role" required disabled>
                                     <option value="" disabled selected>Pilih Hak Akses...</option>
                                     <option value="super_admin">Super Admin</option>
                                     <option value="operator">Operator</option>
@@ -265,6 +265,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="m-0" style="font-size:10px;">Sistem dilindungi. Akses tidak sah akan direkam.</p>
             </div>
         </div>
+<!-- Modal Pernyataan Akses -->
+<div class="modal fade" id="accessModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="accessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-dark" style="border-radius: 16px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <div class="modal-header bg-dark text-white border-bottom-0 py-3">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="accessModalLabel">
+                    <i class="bi bi-shield-lock-fill text-warning fs-4"></i>
+                    Pernyataan Hak Akses Sistem
+                </h5>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-muted mb-3">Harap baca pernyataan otorisasi berikut dengan teliti:</p>
+                <div id="termsContent" style="max-height: 180px; overflow-y: auto; padding: 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 13px; line-height: 1.6; background-color: #f8fafc;">
+                    <strong>PENTING:</strong> Sistem ini merupakan bagian dari Master Data Sekolah (MDS) yang dilindungi oleh sistem keamanan berlapis. 
+                    Akses ke sistem ini hanya ditujukan bagi personel sekolah resmi (Staf, Guru, Operator, atau Kepala Sekolah) yang telah memiliki hak akses sah dan terdaftar di database.
+                    <br><br>
+                    Setiap aktivitas login dan penggunaan sistem akan diawasi dan dicatat dalam log audit, termasuk alamat IP Anda. 
+                    Segala tindakan akses ilegal tanpa wewenang, pencurian data, atau penyalahgunaan kredensial merupakan pelanggaran hukum berat dan akan diproses secara hukum berdasarkan UU ITE yang berlaku di Republik Indonesia.
+                    <br><br>
+                    <strong>Dengan ini saya menyatakan dan menjamin bahwa:</strong>
+                    <ul>
+                        <li>Saya adalah personel/staf resmi sekolah yang memiliki wewenang penuh untuk mengakses sistem ini.</li>
+                        <li>Saya bertanggung jawab secara penuh atas segala aktivitas yang terjadi di bawah akun saya.</li>
+                        <li>Saya tidak akan membagikan kredensial login saya kepada pihak mana pun.</li>
+                    </ul>
+                    <p class="mb-0 text-success fw-bold text-center">--- Batas Akhir Dokumen ---</p>
+                </div>
+                
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="agreeCheckbox" disabled>
+                    <label class="form-check-label small fw-semibold text-secondary-emphasis" for="agreeCheckbox" style="cursor: pointer; user-select: none;">
+                        Saya menyatakan memiliki hak akses sah dan setuju dengan ketentuan di atas
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 px-4 d-flex justify-content-end">
+                <button type="button" class="btn btn-primary px-4 py-2 fw-semibold" id="btnContinue" disabled style="border-radius: 8px;">
+                    Lanjutkan
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -315,6 +356,58 @@ if (captchaBox && captchaCheckbox) {
         });
     }
 }
+
+// Access declaration modal scroll and checkbox validation logic
+document.addEventListener('DOMContentLoaded', () => {
+    const accessModalEl = document.getElementById('accessModal');
+    if (accessModalEl) {
+        const accessModal = new bootstrap.Modal(accessModalEl);
+        accessModal.show();
+        
+        const termsContent = document.getElementById('termsContent');
+        const agreeCheckbox = document.getElementById('agreeCheckbox');
+        const btnContinue = document.getElementById('btnContinue');
+        
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const roleSelect = document.getElementById('role');
+        const togglePassBtn = document.getElementById('togglePass');
+        
+        let hasReachedBottom = false;
+        
+        termsContent.addEventListener('scroll', () => {
+            if (hasReachedBottom) return;
+            // Check if scrolled to bottom of container
+            const threshold = 15; // tolerance in px
+            if (termsContent.scrollHeight - termsContent.scrollTop <= termsContent.clientHeight + threshold) {
+                agreeCheckbox.removeAttribute('disabled');
+                agreeCheckbox.classList.add('border-primary');
+                hasReachedBottom = true;
+            }
+        });
+        
+        agreeCheckbox.addEventListener('change', () => {
+            if (agreeCheckbox.checked) {
+                btnContinue.removeAttribute('disabled');
+            } else {
+                btnContinue.setAttribute('disabled', 'true');
+            }
+        });
+        
+        btnContinue.addEventListener('click', () => {
+            if (usernameInput) usernameInput.removeAttribute('disabled');
+            if (passwordInput) passwordInput.removeAttribute('disabled');
+            if (roleSelect) roleSelect.removeAttribute('disabled');
+            if (togglePassBtn) togglePassBtn.removeAttribute('disabled');
+            
+            accessModal.hide();
+            
+            if (usernameInput) {
+                setTimeout(() => usernameInput.focus(), 300);
+            }
+        });
+    }
+});
 </script>
 </body>
 </html>
