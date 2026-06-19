@@ -148,7 +148,7 @@ $month_names = [
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
             border: 1px solid var(--border-color);
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, border-color 0.2s ease;
         }
         .stat-card-parent:hover {
             transform: translateY(-2px);
@@ -163,28 +163,132 @@ $month_names = [
         [data-bs-theme="dark"] .stat-card-parent {
             background-color: var(--bg-card);
         }
-        /* Mobile horizontal scroll support for pills */
-        .scroll-pills {
-            display: flex;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 5px;
-        }
-        .scroll-pills::-webkit-scrollbar {
+        
+        /* Bottom Navigation Bar for Mobile */
+        .bottom-nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 68px;
+            background-color: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            z-index: 1030;
             display: none;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(15px);
+            background: rgba(var(--bg-card), 0.94);
+            padding-bottom: env(safe-area-inset-bottom);
         }
-        .scroll-pills .nav-item {
-            flex: 0 0 auto;
-            margin-right: 8px;
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 10.5px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            flex-grow: 1;
+            height: 100%;
+            border: none;
+            background: transparent;
+            outline: none;
         }
-        @media (max-width: 576px) {
-            .profile-hero-card .profile-img-container {
-                width: 100px !important;
-                height: 100px !important;
+
+        .bottom-nav-item i {
+            font-size: 1.35rem;
+            margin-bottom: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        .bottom-nav-item:hover i {
+            transform: translateY(-1px);
+        }
+
+        .bottom-nav-item.active {
+            color: var(--primary-color);
+        }
+
+        /* Mobile cards design for SPP & Grades */
+        .mobile-card {
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            padding: 1.15rem;
+            margin-bottom: 0.85rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .mobile-card:active {
+            transform: scale(0.99);
+        }
+
+        .mobile-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .mobile-card-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .mobile-grid-grades {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            text-align: center;
+            background: rgba(99, 102, 241, 0.04);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(99, 102, 241, 0.08);
+        }
+
+        [data-bs-theme="dark"] .mobile-grid-grades {
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .mobile-grid-item {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .mobile-grid-value {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-top: 2px;
+        }
+
+        @media (max-width: 767.98px) {
+            .bottom-nav-bar {
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+            }
+            .parent-container {
+                padding-bottom: 85px; /* Prevent content from being hidden behind bottom nav */
             }
         }
-    </style>
+        
+        @media (max-width: 576px) {
+            .profile-hero-card .profile-img-container {
+                width: 80px !important;
+                height: 80px !important;
+            }
+            .stat-card-parent h4 {
+                font-size: 1.15rem !important;
+            }
+        }
 </head>
 <body>
 
@@ -219,64 +323,64 @@ $month_names = [
 
 <div class="parent-container">
     <!-- Student Header Summary Card -->
-    <div class="card profile-hero-card p-4 mb-4">
-        <div class="row align-items-center g-3 text-center text-md-start">
-            <div class="col-12 col-md-auto d-flex justify-content-center">
-                <div class="profile-img-container bg-white bg-opacity-10 d-flex align-items-center justify-content-center border border-white border-opacity-20 rounded-circle overflow-hidden" style="width: 120px; height: 120px;">
+    <div class="card profile-hero-card p-3 p-md-4 mb-4">
+        <div class="row align-items-center g-3 text-start">
+            <div class="col-auto">
+                <div class="profile-img-container bg-white bg-opacity-10 d-flex align-items-center justify-content-center border border-white border-opacity-20 rounded-circle overflow-hidden" style="width: 80px; height: 80px;">
                     <?php if (!empty($siswa['foto']) && file_exists('../' . $siswa['foto'])): ?>
                         <img src="../<?php echo htmlspecialchars($siswa['foto']); ?>" alt="Foto" style="width:100%; height:100%; object-fit: cover;">
                     <?php else: ?>
-                        <i class="bi bi-person text-white-50" style="font-size: 4rem;"></i>
+                        <i class="bi bi-person text-white-50" style="font-size: 2.5rem;"></i>
                     <?php endif; ?>
                 </div>
             </div>
             
-            <div class="col-12 col-md">
-                <span class="badge bg-warning text-dark fw-bold mb-2 px-3 py-1 text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Kelas <?php echo htmlspecialchars($siswa['nama_kelas'] ?? 'Belum Diatur'); ?></span>
-                <h3 class="fw-bold mb-1 text-white"><?php echo htmlspecialchars($siswa['nama']); ?></h3>
-                <p class="text-white-50 small mb-2">NISN: <?php echo htmlspecialchars($siswa['nisn']); ?> &nbsp;|&nbsp; NIS: <?php echo htmlspecialchars($siswa['nis']); ?></p>
-                <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-2">
-                    <span class="badge bg-white bg-opacity-15 text-white"><i class="bi bi-calendar-check me-1"></i> Angkatan: <?php echo htmlspecialchars($siswa['tahun_masuk']); ?></span>
-                    <span class="badge bg-white bg-opacity-15 text-white"><i class="bi bi-gender-ambiguous me-1"></i> <?php echo $siswa['jenis_kelamin'] === 'L' ? 'Laki-laki' : 'Perempuan'; ?></span>
-                </div>
+            <div class="col">
+                <span class="badge bg-warning text-dark fw-bold mb-1 px-2 py-1 text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Kelas <?php echo htmlspecialchars($siswa['nama_kelas'] ?? 'Belum Diatur'); ?></span>
+                <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;"><?php echo htmlspecialchars($siswa['nama']); ?></h4>
+                <p class="text-white-50 small mb-0 mt-1" style="font-size: 11px;">NISN: <?php echo htmlspecialchars($siswa['nisn']); ?> &bull; NIS: <?php echo htmlspecialchars($siswa['nis']); ?></p>
             </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3 pt-2 border-top border-white border-opacity-10">
+            <span class="badge bg-white bg-opacity-10 text-white" style="font-size: 11px;"><i class="bi bi-calendar-check me-1"></i> Angkatan: <?php echo htmlspecialchars($siswa['tahun_masuk']); ?></span>
+            <span class="badge bg-white bg-opacity-10 text-white" style="font-size: 11px;"><i class="bi bi-gender-ambiguous me-1"></i> <?php echo $siswa['jenis_kelamin'] === 'L' ? 'Laki-laki' : 'Perempuan'; ?></span>
         </div>
     </div>
 
     <!-- Quick Stats Summary Row -->
-    <div class="row g-3 mb-4">
+    <div class="row g-2 g-md-3 mb-4">
         <!-- Attendance Widget -->
-        <div class="col-12 col-md-4">
+        <div class="col-6 col-md-4">
             <?php 
             $rate = $total_att_days > 0 ? round(($att_summary['Hadir'] / $total_att_days) * 100) : 100;
             $rate_color = 'text-success';
             if ($rate < 90) $rate_color = 'text-warning';
             if ($rate < 75) $rate_color = 'text-danger';
             ?>
-            <div class="card stat-card-parent bg-body p-3 d-flex flex-row align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small fw-semibold d-block">Persentase Kehadiran</span>
-                    <h3 class="fw-bold m-0 mt-1 <?php echo $rate_color; ?>"><?php echo $rate; ?>%</h3>
-                    <span class="text-muted small" style="font-size:11px;"><?php echo $att_summary['Hadir']; ?> dari <?php echo $total_att_days; ?> hari sekolah</span>
+            <div class="card stat-card-parent bg-body h-100 p-2 p-md-3 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 0; flex: 1;">
+                    <span class="text-muted small fw-semibold d-block text-truncate" style="font-size: 11px;">Kehadiran</span>
+                    <h4 class="fw-bold m-0 mt-1 <?php echo $rate_color; ?>" style="font-size: 1.3rem;"><?php echo $rate; ?>%</h4>
+                    <span class="text-muted small text-truncate d-block" style="font-size: 10px;"><?php echo $att_summary['Hadir']; ?>/<?php echo $total_att_days; ?> hari</span>
                 </div>
-                <div class="bg-success bg-opacity-10 text-success rounded-3 p-3">
-                    <i class="bi bi-calendar-check-fill fs-3"></i>
+                <div class="bg-success bg-opacity-10 text-success rounded-3 p-2 d-none d-sm-flex">
+                    <i class="bi bi-calendar-check-fill fs-4"></i>
                 </div>
             </div>
         </div>
         
         <!-- SPP Bills Widget -->
-        <div class="col-12 col-md-4">
-            <div class="card stat-card-parent bg-body p-3 d-flex flex-row align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small fw-semibold d-block">Tunggakan SPP (12 Bln)</span>
-                    <h3 class="fw-bold m-0 mt-1 <?php echo $total_tunggakan > 0 ? 'text-danger' : 'text-success'; ?>">
-                        Rp <?php echo number_format($total_tunggakan, 0, ',', '.'); ?>
-                    </h3>
-                    <span class="text-muted small" style="font-size:11px;"><?php echo $unpaid_months_count; ?> bulan belum dibayar</span>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card-parent bg-body h-100 p-2 p-md-3 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 0; flex: 1;">
+                    <span class="text-muted small fw-semibold d-block text-truncate" style="font-size: 11px;">Tunggakan SPP</span>
+                    <h4 class="fw-bold m-0 mt-1 <?php echo $total_tunggakan > 0 ? 'text-danger' : 'text-success'; ?>" style="font-size: 1.15rem;">
+                        Rp<?php echo number_format($total_tunggakan, 0, ',', '.'); ?>
+                    </h4>
+                    <span class="text-muted small text-truncate d-block" style="font-size: 10px;"><?php echo $unpaid_months_count; ?> blm lunas</span>
                 </div>
-                <div class="bg-danger bg-opacity-10 text-danger rounded-3 p-3">
-                    <i class="bi bi-wallet2 fs-3"></i>
+                <div class="bg-danger bg-opacity-10 text-danger rounded-3 p-2 d-none d-sm-flex">
+                    <i class="bi bi-wallet2 fs-4"></i>
                 </div>
             </div>
         </div>
@@ -291,21 +395,21 @@ $month_names = [
                 $avg_score = round($sum / count($grades), 1);
             }
             ?>
-            <div class="card stat-card-parent bg-body p-3 d-flex flex-row align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small fw-semibold d-block">Rata-rata Rapor</span>
-                    <h3 class="fw-bold m-0 mt-1 text-primary"><?php echo $avg_score > 0 ? $avg_score : '-'; ?></h3>
-                    <span class="text-muted small" style="font-size:11px;"><?php echo count($grades); ?> mata pelajaran terinput</span>
+            <div class="card stat-card-parent bg-body h-100 p-2 p-md-3 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 0; flex: 1;">
+                    <span class="text-muted small fw-semibold d-block" style="font-size: 11px;">Rata-rata Rapor</span>
+                    <h4 class="fw-bold m-0 mt-1 text-primary" style="font-size: 1.3rem;"><?php echo $avg_score > 0 ? $avg_score : '-'; ?></h4>
+                    <span class="text-muted small" style="font-size: 10px;"><?php echo count($grades); ?> mapel terinput</span>
                 </div>
-                <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3">
-                    <i class="bi bi-journal-bookmark-fill fs-3"></i>
+                <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-2">
+                    <i class="bi bi-journal-bookmark-fill fs-4"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Responsive Tab Navigation (Mobile scrollable) -->
-    <div class="mb-3">
+    <!-- Responsive Tab Navigation (Mobile hidden, using bottom nav instead) -->
+    <div class="mb-3 d-none d-md-block">
         <ul class="nav nav-pills scroll-pills border p-2 bg-body rounded-4" id="parentTab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
@@ -338,49 +442,49 @@ $month_names = [
             <div class="row g-4">
                 <!-- Detailed Profile Card -->
                 <div class="col-12 col-lg-7">
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body">
-                        <h5 class="fw-bold mb-4 text-dark-emphasis"><i class="bi bi-person-lines-fill text-primary me-2"></i> Biodata Lengkap Anak</h5>
+                    <div class="card shadow-sm border-0 rounded-4 p-3 p-md-4 bg-body">
+                        <h5 class="fw-bold mb-3 mb-md-4 text-dark-emphasis" style="font-size: 1.1rem;"><i class="bi bi-person-lines-fill text-primary me-2"></i> Biodata Lengkap Anak</h5>
                         <div class="row g-3">
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">Tempat & Tanggal Lahir</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo htmlspecialchars($siswa['tempat_lahir'] . ', ' . date('d F Y', strtotime($siswa['tanggal_lahir']))); ?></span>
+                            <div class="col-6 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Tempat & Tgl Lahir</span>
+                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['tempat_lahir'] . ', ' . date('d-m-Y', strtotime($siswa['tanggal_lahir']))); ?></span>
                             </div>
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">Agama</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo htmlspecialchars($siswa['agama']); ?></span>
+                            <div class="col-6 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Agama</span>
+                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['agama']); ?></span>
                             </div>
                             
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">Nomor HP Siswa</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo htmlspecialchars($siswa['no_hp']); ?></span>
+                            <div class="col-6 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Nomor HP Siswa</span>
+                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['no_hp']); ?></span>
                             </div>
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">Email Siswa</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo !empty($siswa['email']) ? htmlspecialchars($siswa['email']) : '-'; ?></span>
+                            <div class="col-6 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Email Siswa</span>
+                                <span class="fw-semibold text-dark-emphasis text-truncate d-block" style="font-size: 13.5px;"><?php echo !empty($siswa['email']) ? htmlspecialchars($siswa['email']) : '-'; ?></span>
                             </div>
                             
                             <div class="col-12">
-                                <span class="text-muted small d-block">Alamat Tinggal</span>
-                                <span class="fw-semibold d-block mt-1 p-2 bg-light rounded text-dark-emphasis" style="font-size: 14px;">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Alamat Tinggal</span>
+                                <span class="fw-semibold d-block mt-1 p-2 bg-light rounded text-dark-emphasis" style="font-size: 13px;">
                                     <?php echo nl2br(htmlspecialchars($siswa['alamat'])); ?>
                                 </span>
                             </div>
                             
-                            <hr class="my-4">
-                            <h6 class="fw-bold text-dark-emphasis mt-1 mb-3"><i class="bi bi-people-fill text-success me-2"></i>Data Orang Tua / Wali</h6>
+                            <hr class="my-3">
+                            <h6 class="fw-bold text-dark-emphasis mt-1 mb-2" style="font-size: 0.95rem;"><i class="bi bi-people-fill text-success me-2"></i>Data Orang Tua / Wali</h6>
                             
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">Nama Ayah</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo htmlspecialchars($siswa['nama_ayah']); ?></span>
+                            <div class="col-6 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Nama Ayah</span>
+                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['nama_ayah']); ?></span>
                             </div>
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">Nama Ibu</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo htmlspecialchars($siswa['nama_ibu']); ?></span>
+                            <div class="col-6 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">Nama Ibu</span>
+                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo htmlspecialchars($siswa['nama_ibu']); ?></span>
                             </div>
                             
-                            <div class="col-sm-6">
-                                <span class="text-muted small d-block">No HP Orang Tua</span>
-                                <span class="fw-semibold text-dark-emphasis"><?php echo !empty($siswa['no_hp_ortu']) ? htmlspecialchars($siswa['no_hp_ortu']) : '-'; ?></span>
+                            <div class="col-12 col-sm-6">
+                                <span class="text-muted small d-block" style="font-size: 11px;">No HP Orang Tua</span>
+                                <span class="fw-semibold text-dark-emphasis" style="font-size: 13.5px;"><?php echo !empty($siswa['no_hp_ortu']) ? htmlspecialchars($siswa['no_hp_ortu']) : '-'; ?></span>
                             </div>
                         </div>
                     </div>
@@ -469,11 +573,12 @@ $month_names = [
 
                 <!-- 12 Months SPP Timeline/List -->
                 <div class="col-12 col-lg-7">
-                    <div class="card shadow-sm border-0 rounded-4 p-4 bg-body">
-                        <h5 class="fw-bold mb-3 text-dark-emphasis"><i class="bi bi-calendar-range text-primary me-2"></i> Status SPP 12 Bulan Terakhir</h5>
-                        <p class="small text-muted">Daftar tagihan dan pembayaran SPP Anda dalam rentang 12 bulan terakhir:</p>
+                    <div class="card shadow-sm border-0 rounded-4 p-3 p-md-4 bg-body">
+                        <h5 class="fw-bold mb-2 mb-md-3 text-dark-emphasis"><i class="bi bi-calendar-range text-primary me-2"></i> Status SPP 12 Bulan Terakhir</h5>
+                        <p class="small text-muted mb-3">Daftar tagihan dan pembayaran SPP Anda dalam rentang 12 bulan terakhir:</p>
                         
-                        <div class="table-responsive">
+                        <!-- Desktop View Table -->
+                        <div class="table-responsive d-none d-md-block">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
@@ -516,6 +621,42 @@ $month_names = [
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Mobile View Cards -->
+                        <div class="d-block d-md-none">
+                            <?php foreach ($months_billing as $mb): 
+                                $key = $mb['tahun'] . '-' . $mb['bulan'];
+                                $is_paid = isset($payment_map[$key]) && $payment_map[$key]['status_bayar'] === 'Lunas';
+                            ?>
+                                <div class="mobile-card">
+                                    <div class="mobile-card-header">
+                                        <span class="mobile-card-title"><?php echo $month_names[$mb['bulan']] . ' ' . $mb['tahun']; ?></span>
+                                        <?php if ($is_paid): ?>
+                                            <span class="badge bg-success-subtle text-success-emphasis"><i class="bi bi-check-circle-fill me-1"></i> Lunas</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-x-circle-fill me-1"></i> Belum Lunas</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <div>
+                                            <span class="text-muted small d-block" style="font-size: 11px;">Tagihan SPP</span>
+                                            <span class="fw-bold text-primary" style="font-size: 1.1rem;">Rp <?php echo number_format($tarif_spp, 0, ',', '.'); ?></span>
+                                        </div>
+                                        <div>
+                                            <?php if ($is_paid): ?>
+                                                <a href="../spp/invoice.php?token=<?php echo htmlspecialchars($payment_map[$key]['invoice_token']); ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                    <i class="bi bi-receipt"></i> Kuitansi
+                                                </a>
+                                            <?php else: ?>
+                                                <button class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="showBankDetailsMobile()">
+                                                    <i class="bi bi-bank"></i> Bayar
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -554,7 +695,8 @@ $month_names = [
                                 </span>
                             </h6>
                             
-                            <div class="table-responsive">
+                            <!-- Desktop View Table -->
+                            <div class="table-responsive d-none d-md-block">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
                                         <tr>
@@ -606,6 +748,57 @@ $month_names = [
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Mobile View Cards -->
+                            <div class="d-block d-md-none">
+                                <?php foreach ($semester_grades as $grade):
+                                    $final = (float)$grade['nilai_akhir'];
+                                    if ($final >= 85) {
+                                        $badge_class = 'bg-success-subtle text-success';
+                                        $predikat = 'A';
+                                    } elseif ($final >= 75) {
+                                        $badge_class = 'bg-primary-subtle text-primary';
+                                        $predikat = 'B';
+                                    } elseif ($final >= 60) {
+                                        $badge_class = 'bg-warning-subtle text-warning';
+                                        $predikat = 'C';
+                                    } else {
+                                        $badge_class = 'bg-danger-subtle text-danger';
+                                        $predikat = 'D';
+                                    }
+                                ?>
+                                    <div class="mobile-card">
+                                        <div class="mobile-card-header mb-2">
+                                            <span class="mobile-card-title fw-bold text-dark-emphasis"><?php echo htmlspecialchars($grade['mata_pelajaran']); ?></span>
+                                            <span class="badge <?php echo $badge_class; ?> font-monospace px-2.5 py-1" style="font-size: 12px;">
+                                                <?php echo number_format($grade['nilai_akhir'], 1); ?> (<?php echo $predikat; ?>)
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="mobile-grid-grades">
+                                            <div class="mobile-grid-item">
+                                                <div>Tugas (30%)</div>
+                                                <div class="mobile-grid-value"><?php echo number_format($grade['nilai_tugas'], 1); ?></div>
+                                            </div>
+                                            <div class="mobile-grid-item border-start border-end border-opacity-10">
+                                                <div>UTS (30%)</div>
+                                                <div class="mobile-grid-value"><?php echo number_format($grade['nilai_uts'], 1); ?></div>
+                                            </div>
+                                            <div class="mobile-grid-item">
+                                                <div>UAS (40%)</div>
+                                                <div class="mobile-grid-value"><?php echo number_format($grade['nilai_uas'], 1); ?></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <?php if (!empty($grade['keterangan'])): ?>
+                                            <div class="mt-2 p-2 bg-light rounded-3 border-0">
+                                                <span class="text-muted d-block mb-1" style="font-size: 9px; font-weight: 700; text-transform: uppercase;">Feedback Guru:</span>
+                                                <p class="mb-0 text-muted" style="font-size: 11.5px; line-height: 1.4;"><?php echo htmlspecialchars($grade['keterangan']); ?></p>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -671,7 +864,8 @@ $month_names = [
                                 <p class="mt-2 mb-0">Belum ada data presensi siswa yang dicatatkan oleh guru.</p>
                             </div>
                         <?php else: ?>
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <!-- Desktop View Table -->
+                            <div class="table-responsive d-none d-md-block" style="max-height: 400px; overflow-y: auto;">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light sticky-top">
                                         <tr>
@@ -710,6 +904,49 @@ $month_names = [
                                     </tbody>
                                 </table>
                             </div>
+
+                            <!-- Mobile View List -->
+                            <div class="d-block d-md-none" style="max-height: 400px; overflow-y: auto; padding-right: 2px;">
+                                <?php 
+                                $day_names = [
+                                    'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 
+                                    'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'
+                                ];
+                                foreach ($att_logs as $log):
+                                    $day_en = date('l', strtotime($log['tanggal']));
+                                    $day_id = $day_names[$day_en] ?? $day_en;
+                                    $formatted_date = $day_id . ', ' . date('d-m-Y', strtotime($log['tanggal']));
+                                    
+                                    $badge_class = 'bg-secondary';
+                                    $icon_class = 'bi-circle';
+                                    if ($log['status'] === 'Hadir') {
+                                        $badge_class = 'bg-success-subtle text-success-emphasis';
+                                        $icon_class = 'bi-check-circle-fill text-success';
+                                    } elseif ($log['status'] === 'Sakit') {
+                                        $badge_class = 'bg-primary-subtle text-primary-emphasis';
+                                        $icon_class = 'bi-info-circle-fill text-primary';
+                                    } elseif ($log['status'] === 'Izin') {
+                                        $badge_class = 'bg-warning-subtle text-warning-emphasis';
+                                        $icon_class = 'bi-exclamation-circle-fill text-warning';
+                                    } elseif ($log['status'] === 'Alpa') {
+                                        $badge_class = 'bg-danger-subtle text-danger-emphasis';
+                                        $icon_class = 'bi-x-circle-fill text-danger';
+                                    }
+                                ?>
+                                    <div class="d-flex align-items-center justify-content-between p-3 border-bottom bg-body">
+                                        <div class="d-flex align-items-center gap-2" style="min-width: 0;">
+                                            <i class="bi <?php echo $icon_class; ?> fs-5 flex-shrink-0"></i>
+                                            <div style="min-width: 0;">
+                                                <span class="fw-semibold text-dark-emphasis d-block" style="font-size: 13.5px;"><?php echo $formatted_date; ?></span>
+                                                <?php if (!empty($log['keterangan'])): ?>
+                                                    <span class="text-muted d-block text-truncate" style="font-size: 11px;"><?php echo htmlspecialchars($log['keterangan']); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <span class="badge <?php echo $badge_class; ?> rounded-pill px-2.5 flex-shrink-0"><?php echo htmlspecialchars($log['status']); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -723,6 +960,26 @@ $month_names = [
         <p class="m-0">&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?>. Semua Hak Cipta Dilindungi.</p>
         <p class="m-0 text-muted" style="font-size: 10px;">Diproses oleh Nginx & PHP-FPM - Stabil untuk RAM 4GB</p>
     </footer>
+</div>
+
+<!-- Bottom Navigation Bar for Mobile -->
+<div class="bottom-nav-bar d-md-none">
+    <button type="button" class="bottom-nav-item active" data-tab-id="overview-tab">
+        <i class="bi bi-grid-fill"></i>
+        <span>Ringkasan</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-tab-id="spp-tab">
+        <i class="bi bi-wallet2"></i>
+        <span>SPP</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-tab-id="grades-tab">
+        <i class="bi bi-journal-bookmark-fill"></i>
+        <span>Nilai Rapor</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-tab-id="attendance-tab">
+        <i class="bi bi-calendar-check"></i>
+        <span>Kehadiran</span>
+    </button>
 </div>
 
 <!-- Bootstrap 5 JS Bundle -->
@@ -756,6 +1013,36 @@ $month_names = [
                 }
             });
         }
+
+        // Link bottom nav items with standard bootstrap tabs
+        const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+        bottomNavItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = item.getAttribute('data-tab-id');
+                const tabButton = document.getElementById(tabId);
+                if (tabButton) {
+                    // Trigger bootstrap tab show
+                    const tab = new bootstrap.Tab(tabButton);
+                    tab.show();
+                }
+            });
+        });
+
+        // Sync bottom nav active class when tabs change
+        const tabButtons = document.querySelectorAll('#parentTab button');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('shown.bs.tab', (e) => {
+                const activeTabId = e.target.id;
+                bottomNavItems.forEach(item => {
+                    if (item.getAttribute('data-tab-id') === activeTabId) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            });
+        });
     });
 
     // Fungsi salin nomor rekening ke clipboard
@@ -766,6 +1053,19 @@ $month_names = [
         }).catch(err => {
             console.error('Gagal menyalin rekening: ', err);
         });
+    }
+
+    // Fungsi scroll otomatis ke detail bank di HP
+    function showBankDetailsMobile() {
+        const bankCard = document.querySelector('.bi-bank').closest('.card');
+        if (bankCard) {
+            bankCard.scrollIntoView({ behavior: 'smooth' });
+            bankCard.style.outline = '2px solid var(--primary-color)';
+            bankCard.style.transition = 'outline 0.3s ease';
+            setTimeout(() => {
+                bankCard.style.outline = '2px solid transparent';
+            }, 2000);
+        }
     }
 </script>
 </body>
