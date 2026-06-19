@@ -23,11 +23,13 @@ $_SESSION['admin_gate_time'] = time();
 
 // Sudah login? Langsung ke dashboard
 if (isset($_SESSION['user_id'])) {
+    session_write_close();
     header("Location: /dashboard_core.php");
     exit();
 }
 
 // Belum login? Ke halaman login
+session_write_close();
 header("Location: /auth/login.php");
 exit();
 ?>
