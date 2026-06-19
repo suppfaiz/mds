@@ -1,2 +1,39 @@
-# Disable directory listing across the entire project
+# =========================================
+# KEAMANAN MASTER DATA SEKOLAH
+# =========================================
+
+# 1. Nonaktifkan directory listing (jangan tampilkan isi folder)
 Options -Indexes
+
+# 2. Blokir akses langsung ke file sensitif
+<FilesMatch "(\.env|\.git|\.gitignore|composer\.lock|install\.sh|install\.bat|README\.md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# 3. Blokir akses ke file backup dan log
+<FilesMatch "\.(log|bak|sql|sh|bat|md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# 4. Nonaktifkan server signature (jangan bocorkan versi PHP/Apache)
+ServerSignature Off
+
+# 5. Security Headers
+<IfModule mod_headers.c>
+    # Cegah clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+    # Cegah MIME sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    # Aktifkan XSS protection browser
+    Header always set X-XSS-Protection "1; mode=block"
+    # Hapus info server
+    Header unset Server
+    Header unset X-Powered-By
+</IfModule>
+
+# 6. Paksa PHP error tidak tampil di browser (tampilkan di log saja)
+php_flag display_errors Off
+php_flag log_errors On
+

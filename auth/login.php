@@ -10,47 +10,109 @@ if (isset($_SESSION['user_id'])) {
     exit();
 }
 
+// =====================================================
+// BRUTE FORCE PROTECTION
+// Max 5 failed attempts within 10 minutes
+// =====================================================
+define('MAX_LOGIN_ATTEMPTS', 5);
+define('LOCKOUT_DURATION', 10 * 60); // 10 minutes in seconds
+
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$lockout_key  = 'login_lockout_' . md5($ip);
+$attempts_key = 'login_attempts_' . md5($ip);
+$time_key     = 'login_time_' . md5($ip);
+
+// Check if currently locked out
+$is_locked   = false;
+$lockout_remaining = 0;
+if (isset($_SESSION[$lockout_key]) && $_SESSION[$lockout_key] === true) {
+    $elapsed = time() - ($_SESSION[$time_key] ?? 0);
+    if ($elapsed < LOCKOUT_DURATION) {
+        $is_locked = true;
+        $lockout_remaining = LOCKOUT_DURATION - $elapsed;
+    } else {
+        // Lockout expired — reset
+        unset($_SESSION[$lockout_key], $_SESSION[$attempts_key], $_SESSION[$time_key]);
+    }
+}
+
+// Generate CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $error = '';
+$attempts_left = MAX_LOGIN_ATTEMPTS - (int)($_SESSION[$attempts_key] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
-    $role = $_POST['role'] ?? '';
 
-    if (empty($username) || empty($password) || empty($role)) {
-        $error = 'Semua field wajib diisi.';
+    // Validate CSRF token
+    $submitted_token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'], $submitted_token)) {
+        $error = 'Permintaan tidak valid. Silakan muat ulang halaman.';
+    } elseif ($is_locked) {
+        $error = 'Terlalu banyak percobaan login. Coba lagi dalam ' . ceil($lockout_remaining / 60) . ' menit.';
     } else {
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            $user = $stmt->fetch();
+        $username = trim($_POST['username'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+        $role     = $_POST['role'] ?? '';
 
-            if ($user && password_verify($password, $user['password'])) {
-                // Verify if the role requested matches user's role
-                if ($user['role'] === $role) {
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['role'] = $user['role'];
-                    $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
+        if (empty($username) || empty($password) || empty($role)) {
+            $error = 'Semua field wajib diisi.';
+        } else {
+            try {
+                $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+                $stmt->execute([$username]);
+                $user = $stmt->fetch();
 
-                    // Log activity
-                    logActivity($pdo, 'Login', 'User berhasil login dengan hak akses: ' . $role);
+                if ($user && password_verify($password, $user['password'])) {
+                    if ($user['role'] === $role) {
+                        // SUCCESS — reset attempt counter
+                        unset($_SESSION[$lockout_key], $_SESSION[$attempts_key], $_SESSION[$time_key]);
 
-                    header("Location: ../index.php");
-                    exit();
+                        // Regenerate session ID to prevent fixation attacks
+                        session_regenerate_id(true);
+
+                        $_SESSION['user_id']      = $user['id'];
+                        $_SESSION['username']     = $user['username'];
+                        $_SESSION['role']         = $user['role'];
+                        $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
+
+                        logActivity($pdo, 'Login', 'User berhasil login dengan hak akses: ' . $role);
+
+                        header("Location: ../index.php");
+                        exit();
+                    } else {
+                        $_SESSION[$attempts_key] = ($_SESSION[$attempts_key] ?? 0) + 1;
+                        $_SESSION[$time_key] = time();
+                        $error = 'Hak akses yang dipilih tidak sesuai.';
+                        logActivity($pdo, 'Login Gagal', 'Username ' . $username . ' mencoba login dengan role yang salah: ' . $role);
+                    }
                 } else {
-                    $error = 'Hak akses yang dipilih tidak sesuai.';
-                    logActivity($pdo, 'Login Gagal', 'Username ' . $username . ' mencoba login dengan role yang salah: ' . $role);
+                    // FAILED — increment counter
+                    $_SESSION[$attempts_key] = ($_SESSION[$attempts_key] ?? 0) + 1;
+                    $_SESSION[$time_key] = time();
+
+                    if ($_SESSION[$attempts_key] >= MAX_LOGIN_ATTEMPTS) {
+                        $_SESSION[$lockout_key] = true;
+                        $is_locked = true;
+                        $lockout_remaining = LOCKOUT_DURATION;
+                        $error = 'Akun sementara dikunci selama 10 menit karena terlalu banyak percobaan login yang gagal.';
+                        logActivity($pdo, 'Login Dikunci', 'IP ' . $ip . ' dikunci setelah ' . MAX_LOGIN_ATTEMPTS . ' percobaan gagal.');
+                    } else {
+                        $attempts_left = MAX_LOGIN_ATTEMPTS - $_SESSION[$attempts_key];
+                        $error = 'Username atau password salah. Sisa percobaan: ' . $attempts_left . 'x';
+                        logActivity($pdo, 'Login Gagal', 'Percobaan login gagal untuk username: ' . $username . ' (IP: ' . $ip . ')');
+                    }
                 }
-            } else {
-                $error = 'Username atau password salah.';
-                // Log failed attempt
-                logActivity($pdo, 'Login Gagal', 'Percobaan login gagal untuk username: ' . $username);
+            } catch (PDOException $e) {
+                $error = 'Terjadi kesalahan sistem. Silakan hubungi administrator.';
             }
-        } catch (PDOException $e) {
-            $error = 'Terjadi kesalahan sistem: ' . $e->getMessage();
         }
     }
+
+    // Regenerate CSRF token after every POST
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 ?>
 <!DOCTYPE html>
@@ -92,12 +154,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     <?php endif; ?>
                     
-                    <form action="" method="POST" novalidate>
+                    <?php if ($is_locked): ?>
+                    <div class="alert alert-danger d-flex align-items-start gap-2" style="font-size:13px;">
+                        <i class="bi bi-shield-fill-exclamation fs-5 flex-shrink-0 mt-1"></i>
+                        <div>
+                            <strong>Akses Sementara Dikunci</strong><br>
+                            Terlalu banyak percobaan login gagal. Silakan tunggu <strong><?php echo ceil($lockout_remaining/60); ?> menit</strong> lagi.
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <form action="" method="POST" novalidate autocomplete="off">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+
                         <div class="mb-3">
                             <label for="username" class="form-label small fw-semibold">Username</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autofocus>
+                                <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autofocus autocomplete="username">
                             </div>
                         </div>
                         
@@ -105,7 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="password" class="form-label small fw-semibold">Password</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-secondary"><i class="bi bi-lock"></i></span>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required autocomplete="current-password">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePass" tabindex="-1">
+                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                </button>
                             </div>
                         </div>
                         
@@ -124,29 +201,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         
                         <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm" style="background: var(--primary-gradient); border: none;">
-                            <i class="bi bi-box-arrow-in-right me-2"></i> Log In
+                            <i class="bi bi-box-arrow-in-right me-2"></i> Masuk ke Sistem
                         </button>
                     </form>
+                    <?php endif; ?>
                 </div>
             </div>
             
             <div class="text-center mt-3">
                 <a href="../pmb/login.php" class="text-white-50 small text-decoration-none fw-semibold"><i class="bi bi-people-fill text-warning me-1"></i> Portal Pendaftaran Murid Baru (PMB) &rarr;</a>
             </div>
+
+            <div class="text-center mt-3">
+                <a href="../ortu/login.php" class="text-white-50 small text-decoration-none fw-semibold"><i class="bi bi-house-fill text-info me-1"></i> Portal Orang Tua / Wali Murid &rarr;</a>
+            </div>
             
             <div class="text-center mt-4 text-white-50 small">
-                <p>&copy; <?php echo date('Y'); ?> Master Data Sekolah</p>
-                <div class="d-flex justify-content-center gap-2" style="font-size: 11px;">
-                    <span>admin / admin</span> | 
-                    <span>operator / operator</span> | 
-                    <span>guru / guru</span> | 
-                    <span>kepsek / kepsek</span>
-                </div>
+                <p class="m-0">&copy; <?php echo date('Y'); ?> Master Data Sekolah</p>
+                <p class="m-0" style="font-size:10px;">Sistem dilindungi. Akses tidak sah akan direkam.</p>
             </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Toggle password visibility
+const togglePass = document.getElementById('togglePass');
+const eyeIcon    = document.getElementById('eyeIcon');
+const passInput  = document.getElementById('password');
+if (togglePass && passInput) {
+    togglePass.addEventListener('click', () => {
+        const isPass = passInput.type === 'password';
+        passInput.type = isPass ? 'text' : 'password';
+        eyeIcon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+}
+</script>
 </body>
 </html>
