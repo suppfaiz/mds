@@ -27,6 +27,15 @@ try {
 
     // 2. Ambil Informasi Sekolah & Rekening Bank
     $settings = $pdo->query("SELECT * FROM pengaturan WHERE id = 1")->fetch();
+    if (!$settings) {
+        $settings = [
+            'nama_sekolah' => 'Master Data Sekolah',
+            'no_telp' => '-',
+            'nama_bank' => '-',
+            'nomor_rekening' => '-',
+            'nama_rekening' => '-'
+        ];
+    }
 
     // 3. Ambil Nilai Rapor/Akademik
     $nilai_stmt = $pdo->prepare("SELECT * FROM nilai WHERE siswa_id = ? ORDER BY tahun_ajaran DESC, semester DESC, mata_pelajaran ASC");
