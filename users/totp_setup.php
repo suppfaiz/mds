@@ -176,8 +176,8 @@ include $path_prefix . 'includes/header.php';
                                     $username = $user['username'];
                                     $issuer = 'Master Data Sekolah - ' . $_SERVER['HTTP_HOST'];
                                     $qrUrl = TOTPHelper::getQRUrl($username, $secret, $issuer);
-                                    // Construct Google Chart QR URL
-                                    $qrChartUrl = "https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=" . urlencode($qrUrl);
+                                    // Use QRServer API (Google Charts QR API has been shut down/deprecated)
+                                    $qrChartUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($qrUrl);
                                     ?>
                                     <img src="<?php echo htmlspecialchars($qrChartUrl); ?>" alt="QR Code 2FA" style="max-width: 200px; width: 100%;">
                                 </div>
