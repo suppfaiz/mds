@@ -216,7 +216,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    root ${APP_DIR};
+    root \${APP_DIR};
     index index.php index.html index.htm;
 
     server_name _;
@@ -224,49 +224,68 @@ server {
     # Menonaktifkan listing direktori untuk keamanan
     autoindex off;
 
+    # =========================================================
+    # SECRET ADMIN PATH
+    # Akses: http://192.168.200.142/01aac7d617a6d8b2
+    #
+    # Nginx langsung jalankan gate.php saat path ini diakses.
+    # Tidak pakai rewrite — lebih simpel dan pasti bekerja.
+    # =========================================================
+    location ~ ^/01aac7d617a6d8b2 {
+        fastcgi_pass  unix:\${PHP_SOCK};
+        fastcgi_param SCRIPT_FILENAME \${APP_DIR}/gate.php;
+        fastcgi_param REQUEST_URI     \$request_uri;
+        include       fastcgi_params;
+    }
+
+    # Blokir akses langsung ke gate.php via nama file
+    location = /gate.php {
+        return 404;
+    }
+
+    # =========================================================
+    # ROUTE NORMAL
+    # =========================================================
     location / {
         try_files \$uri \$uri/ =404;
     }
 
     # Blok akses langsung ke dokumen privat (menggantikan Deny from all di .htaccess)
-    location /uploads/secure/ {
+    location ^~ /uploads/secure/ {
         deny all;
         return 403;
     }
 
     # Mencegah akses langsung dari luar ke berkas dokumen sensitif di folder uploads
-    location ~* ^/uploads/.*\.(pdf|docx|xlsx|doc|xls|zip|rar|txt|csv)$ {
+    location ~* ^/uploads/.*\.(pdf|docx|xlsx|doc|xls|zip|rar|txt|csv)\$ {
         deny all;
         return 403;
     }
 
     # Mencegah eksekusi file PHP di folder uploads (keamanan ekstra anti-webshell)
-    location ~* ^/uploads/.*\.php$ {
+    location ~* ^/uploads/.*\.php\$ {
         deny all;
     }
 
-    # Blok akses langsung ke folder konfigurasi config/
-    location /config/ {
-        deny all;
-        return 403;
+    # Folder config & system tetap diblokir (disembunyikan dengan 404)
+    location ^~ /config/ {
+        return 404;
     }
 
-    # Blok akses langsung ke folder database/
-    location /database/ {
-        deny all;
-        return 403;
+    # Blok akses langsung ke folder database/ (disembunyikan dengan 404)
+    location ^~ /database/ {
+        return 404;
     }
 
-    # Blok akses langsung ke folder includes/
-    location /includes/ {
-        deny all;
-        return 403;
+    # Blok akses langsung ke folder includes/ (disembunyikan dengan 404)
+    location ^~ /includes/ {
+        return 404;
     }
 
     # Teruskan request PHP ke socket PHP-FPM
-    location ~ \.php$ {
+    location ~ \.php\$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:${PHP_SOCK};
+        fastcgi_pass unix:\${PHP_SOCK};
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
         include fastcgi_params;
     }
@@ -274,6 +293,13 @@ server {
     # Blok akses berkas konfigurasi sensitif (.git, .htaccess, .env, dll)
     location ~ /\. {
         deny all;
+        return 404;
+    }
+
+    # Blokir file dengan ekstensi tertentu
+    location ~* \.(sh|bat|sql|bak|log|env)\$ {
+        deny all;
+        return 404;
     }
 }
 EOF
