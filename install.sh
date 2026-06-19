@@ -198,10 +198,10 @@ systemctl restart apache2
 echo -e "${GREEN}[OK] Konfigurasi Apache & Hak Akses berhasil diperbarui.${NC}"
 echo ""
 
-# Dapatkan IP Publik VPS
-SERVER_IP=$(curl -s https://ifconfig.me)
-if [ -empty "$SERVER_IP" ]; then
-    SERVER_IP=$(hostname -I | awk '{print $1}')
+# Dapatkan IP Lokal Server
+SERVER_IP=$(hostname -I | awk '{print $1}')
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP="127.0.0.1"
 fi
 
 # ==============================================================================
