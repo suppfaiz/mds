@@ -120,11 +120,18 @@ $month_names = [
     <!-- Custom CSS -->
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        /* Lock layout boundary to prevent horizontal and bounce scroll */
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+            overscroll-behavior-x: none;
+        }
         /* CSS Tambahan khusus Portal Orang Tua agar responsif maksimal di HP */
         .parent-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 1.5rem 1rem;
+            overflow-x: hidden;
         }
         .nav-pills .nav-link {
             border-radius: 12px;
@@ -294,29 +301,29 @@ $month_names = [
 <body>
 
 <!-- Header / Topbar Navigation -->
-<nav class="navbar navbar-expand-lg top-nav px-3 py-3 border-bottom sticky-top bg-body shadow-sm" style="backdrop-filter: blur(10px); background: rgba(var(--bg-card), 0.9);">
+<nav class="navbar navbar-expand-lg top-nav px-2 px-sm-3 py-2.5 py-sm-3 border-bottom sticky-top bg-body shadow-sm" style="backdrop-filter: blur(10px); background: rgba(var(--bg-card), 0.9);">
     <div class="container max-width-1200 d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-mortarboard-fill text-primary fs-3"></i>
-            <div>
-                <h5 class="m-0 fw-bold text-dark-emphasis" style="font-size: 16px;"><?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?></h5>
-                <span class="text-muted small" style="font-size: 11px;">Portal Monitoring Wali Murid</span>
+        <div class="d-flex align-items-center gap-1.5 gap-sm-2" style="min-width: 0; flex: 1;">
+            <i class="bi bi-mortarboard-fill text-primary fs-3 flex-shrink-0"></i>
+            <div style="min-width: 0;">
+                <h5 class="m-0 fw-bold text-dark-emphasis text-truncate" style="font-size: 14px; max-width: 140px;"><?php echo htmlspecialchars($settings['nama_sekolah'] ?? 'Master Data Sekolah'); ?></h5>
+                <span class="text-muted small d-block text-truncate" style="font-size: 10px; max-width: 140px;">Wali Murid</span>
             </div>
         </div>
         
-        <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
             <!-- Theme Toggle Switch -->
-            <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
-                <i class="bi bi-sun-fill text-warning"></i>
-                <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle">
-                <i class="bi bi-moon-stars-fill text-primary"></i>
+            <div class="form-check form-switch m-0 d-flex align-items-center gap-1">
+                <i class="bi bi-sun-fill text-warning d-none d-sm-inline" style="font-size: 13px;"></i>
+                <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle" style="width: 2.2em; height: 1.1em;">
+                <i class="bi bi-moon-stars-fill text-primary d-none d-sm-inline" style="font-size: 13px;"></i>
             </div>
             
             <div class="vr text-secondary"></div>
             
             <!-- Logout Button -->
-            <a href="logout.php" class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-1">
-                <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Keluar</span>
+            <a href="logout.php" class="btn btn-outline-danger btn-sm fw-bold px-2 py-1 d-flex align-items-center justify-content-center" style="font-size: 12px; border-radius: 8px;">
+                <i class="bi bi-box-arrow-right" style="font-size: 13px;"></i> <span class="d-none d-sm-inline">Keluar</span>
             </a>
         </div>
     </div>
