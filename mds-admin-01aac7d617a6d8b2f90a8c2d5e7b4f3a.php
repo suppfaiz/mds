@@ -9,7 +9,7 @@
  * CARA KERJA:
  * - domain.com/         → redirect ke PMB (publik)
  * - domain.com/masuk.php → HALAMAN INI TIDAK ADA (404 via PHP)
- * - domain.com/mds-admin-01aac7d617a6d8b2.php → ADMIN GATE ✅
+ * - domain.com/mds-admin-01aac7d617a6d8b2f90a8c2d5e7b4f3a.php → ADMIN GATE ✅
  * 
  * Admin tinggal bookmark URL rahasia ini.
  * Orang iseng tidak akan menebak nama file-nya.
@@ -18,7 +18,7 @@
 
 // ---- Konfigurasi ----
 // Ganti ini dengan token Anda sendiri jika mau lebih personal
-define('ADMIN_SECRET_TOKEN', '01aac7d617a6d8b2');
+define('ADMIN_SECRET_TOKEN', '01aac7d617a6d8b2f90a8c2d5e7b4f3a');
 
 // Verifikasi bahwa file ini diakses langsung (bukan di-include)
 if (basename(__FILE__) !== 'mds-admin-' . ADMIN_SECRET_TOKEN . '.php') {

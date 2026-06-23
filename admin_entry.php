@@ -6,7 +6,7 @@
  * 
  * File ini adalah pintu masuk admin yang sesungguhnya.
  * Dipanggil oleh Nginx ketika ada request ke:
- *   http://domain.com/01aac7d617a6d8b2/
+ *   http://domain.com/01aac7d617a6d8b2f90a8c2d5e7b4f3a/
  * 
  * JANGAN dipublikasikan keberadaan file ini.
  * JANGAN buat link apapun ke path ini di halaman publik.
@@ -14,7 +14,7 @@
  */
 
 // Token rahasia — harus cocok dengan yang di Nginx config
-define('ADMIN_GATE_TOKEN', '01aac7d617a6d8b2');
+define('ADMIN_GATE_TOKEN', '01aac7d617a6d8b2f90a8c2d5e7b4f3a');
 define('ADMIN_GATE_HEADER', 'HTTP_X_ADMIN_PATH');
 
 // Verifikasi bahwa request datang dari Nginx secret path

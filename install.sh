@@ -232,12 +232,12 @@ server {
 
     # =========================================================
     # SECRET ADMIN PATH
-    # Akses: http://192.168.200.142/01aac7d617a6d8b2
+    # Akses: http://192.168.200.142/01aac7d617a6d8b2f90a8c2d5e7b4f3a
     #
     # Nginx langsung jalankan gate.php saat path ini diakses.
     # Tidak pakai rewrite — lebih simpel dan pasti bekerja.
     # =========================================================
-    location ~ ^/01aac7d617a6d8b2 {
+    location ~ ^/01aac7d617a6d8b2f90a8c2d5e7b4f3a {
         limit_req zone=login_limit burst=5 nodelay;
         fastcgi_pass  unix:\${PHP_SOCK};
         fastcgi_param SCRIPT_FILENAME \${APP_DIR}/gate.php;

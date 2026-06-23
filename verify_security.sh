@@ -58,7 +58,7 @@ check_url "/uploads/webshell.php" "403" "Mencegah eksekusi file PHP (Anti-Webshe
 echo -e "\n${BLUE}[3/3] Menguji Mekanisme Portal Admin Gate (Secret URL)...${NC}"
 echo -e "----------------------------------------------------------------------"
 check_url "/auth/login.php" "404" "Memblokir akses langsung ke halaman login (Tanpa Gate)"
-check_url "/01aac7d617a6d8b2" "302" "Mengizinkan akses lewat URL Rahasia (Redirect ke Login)"
+check_url "/01aac7d617a6d8b2f90a8c2d5e7b4f3a" "302" "Mengizinkan akses lewat URL Rahasia (Redirect ke Login)"
 
 echo -e "${BLUE}======================================================================${NC}"
 echo -e "${YELLOW}                 PENGUJIAN SELESAI${NC}"
